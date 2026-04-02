@@ -79,7 +79,7 @@ jobs:
         if: steps.match.outputs.skip != 'true'
         with:
           role-to-assume: ${{ steps.role.outputs.role_arn }}
-          aws-region: us-east-1
+          aws-region: ap-northeast-1
 
       - uses: hashicorp/setup-terraform@v3
         if: steps.match.outputs.skip != 'true'
