@@ -1,4 +1,4 @@
 aws_region  = "ap-northeast-1"
-github_org  = "your-github-org"
-github_repo = "your-repo-name"
+github_org  = "daigo424"
+github_repo = "projects-infra"
 role_name   = "GitHubActionsPlatformRole"
