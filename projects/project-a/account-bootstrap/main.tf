@@ -45,24 +45,7 @@ resource "aws_iam_role" "deploy" {
   assume_role_policy = data.aws_iam_policy_document.assume.json
 }
 
-resource "aws_iam_role_policy" "deploy" {
-  name = "${var.github_actions_role_name}-policy"
-  role = aws_iam_role.deploy.id
-
-  policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [
-      {
-        Effect = "Allow"
-        Action = [
-          "ec2:*",
-          "iam:*",
-          "s3:*",
-          "logs:*",
-          "sts:GetCallerIdentity"
-        ]
-        Resource = "*"
-      }
-    ]
-  })
+resource "aws_iam_role_policy_attachment" "deploy_admin" {
+  role       = aws_iam_role.deploy.name
+  policy_arn = "arn:aws:iam::aws:policy/AdministratorAccess"
 }
