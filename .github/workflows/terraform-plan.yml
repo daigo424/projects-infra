@@ -1,0 +1,105 @@
+name: terraform-plan
+
+on:
+  pull_request:
+    paths:
+      - "platform/**"
+      - "projects/**"
+      - ".github/workflows/**"
+      - ".github/scripts/**"
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: read
+  pull-requests: write
+
+jobs:
+  discover:
+    runs-on: ubuntu-latest
+    outputs:
+      targets: ${{ steps.targets.outputs.targets }}
+      changed: ${{ steps.changed.outputs.changed }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - id: targets
+        run: |
+          TARGETS="$(python .github/scripts/discover_targets.py)"
+          echo "targets=${TARGETS}" >> "$GITHUB_OUTPUT"
+
+      - id: changed
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            CHANGED="$(git diff --name-only "$BASE_SHA" "$HEAD_SHA" | jq -R -s -c 'split("\n")[:-1]')"
+          else
+            CHANGED="$(echo '${{ steps.targets.outputs.targets }}' | jq -c '[.[].path]')"
+          fi
+          echo "changed=${CHANGED}" >> "$GITHUB_OUTPUT"
+
+  plan:
+    needs: discover
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        target: ${{ fromJson(needs.discover.outputs.targets) }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Skip unrelated targets
+        id: match
+        run: |
+          TARGET='${{ toJson(matrix.target) }}'
+          CHANGED='${{ needs.discover.outputs.changed }}'
+          MATCHED="$(python .github/scripts/filter_changed_targets.py "[$TARGET]" "$CHANGED")"
+          if [ "$MATCHED" = "[]" ]; then
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Stop early when target is unchanged
+        if: steps.match.outputs.skip == 'true'
+        run: echo "Skipping unchanged target ${{ matrix.target.path }}"
+
+      - name: Resolve role ARN
+        if: steps.match.outputs.skip != 'true'
+        id: role
+        run: |
+          ROLE_ARN="$(python .github/scripts/resolve_role_arn.py '${{ toJson(matrix.target) }}')"
+          echo "role_arn=${ROLE_ARN}" >> "$GITHUB_OUTPUT"
+
+      - uses: aws-actions/configure-aws-credentials@v4
+        if: steps.match.outputs.skip != 'true'
+        with:
+          role-to-assume: ${{ steps.role.outputs.role_arn }}
+          aws-region: us-east-1
+
+      - uses: hashicorp/setup-terraform@v3
+        if: steps.match.outputs.skip != 'true'
+
+      - name: Terraform init
+        if: steps.match.outputs.skip != 'true'
+        working-directory: ${{ matrix.target.path }}
+        run: terraform init -backend-config=backend.hcl
+
+      - name: Terraform fmt
+        if: steps.match.outputs.skip != 'true'
+        working-directory: ${{ matrix.target.path }}
+        run: terraform fmt -check -recursive
+
+      - name: Terraform validate
+        if: steps.match.outputs.skip != 'true'
+        working-directory: ${{ matrix.target.path }}
+        run: terraform validate
+
+      - name: Terraform plan
+        if: steps.match.outputs.skip != 'true'
+        working-directory: ${{ matrix.target.path }}
+        run: terraform plan -input=false -no-color

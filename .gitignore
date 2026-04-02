@@ -1,0 +1,15 @@
+# Terraform local files
+**/.terraform/*
+*.tfstate
+*.tfstate.*
+crash.log
+crash.*.log
+
+# Optional local-only overrides or secrets
+**/*.auto.tfvars.local
+**/secrets.auto.tfvars
+
+# Editor / OS
+.DS_Store
+.vscode/
+.idea/

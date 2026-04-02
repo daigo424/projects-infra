@@ -1,0 +1,65 @@
+name: terraform-apply
+
+on:
+  workflow_dispatch:
+    inputs:
+      target_path:
+        description: "Terraform target path (for example: platform/bootstrap or projects/project-a/envs/prod)"
+        required: true
+        type: string
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Reject template
+        run: |
+          case "${{ github.event.inputs.target_path }}" in
+            projects/_template/*)
+              echo "_template must never be applied" >&2
+              exit 1
+              ;;
+          esac
+
+      - name: Build target map
+        id: targets
+        run: |
+          TARGETS="$(python .github/scripts/discover_targets.py)"
+          echo "targets=${TARGETS}" >> "$GITHUB_OUTPUT"
+
+      - name: Select target
+        id: select
+        run: |
+          SELECTED="$(echo '${{ steps.targets.outputs.targets }}' | jq -c '.[] | select(.path == "${{ github.event.inputs.target_path }}")')"
+          if [ -z "$SELECTED" ]; then
+            echo "Unsupported target path: ${{ github.event.inputs.target_path }}" >&2
+            exit 1
+          fi
+          echo "target=${SELECTED}" >> "$GITHUB_OUTPUT"
+
+      - name: Resolve role ARN
+        id: role
+        run: |
+          ROLE_ARN="$(python .github/scripts/resolve_role_arn.py '${{ steps.select.outputs.target }}')"
+          echo "role_arn=${ROLE_ARN}" >> "$GITHUB_OUTPUT"
+
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ steps.role.outputs.role_arn }}
+          aws-region: us-east-1
+
+      - uses: hashicorp/setup-terraform@v3
+
+      - name: Terraform init
+        working-directory: ${{ github.event.inputs.target_path }}
+        run: terraform init -backend-config=backend.hcl
+
+      - name: Terraform apply
+        working-directory: ${{ github.event.inputs.target_path }}
+        run: terraform apply -input=false -auto-approve
