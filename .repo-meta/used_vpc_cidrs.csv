@@ -1,0 +1,2 @@
+project_name,account_email,vpc_cidr
+project-a,aws-project-a@example.com,10.20.0.0/16
