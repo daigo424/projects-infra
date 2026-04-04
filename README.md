@@ -105,6 +105,40 @@ For the first setup, run Terraform locally first.
 
 ---
 
+## Python environment setup with uv
+
+This repository uses `pyproject.toml` and `uv.lock`.
+
+### 1. Install uv
+
+#### Windows
+
+``` powershell
+powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"
+```
+
+#### macOS / Linux
+
+``` bash
+curl -LsSf https://astral.sh/uv/install.sh | sh
+```
+
+### 2. Sync environment
+
+Run from the repository root:
+
+``` bash
+uv sync
+```
+
+### 3. Run commands
+
+``` bash
+uv run python --version
+```
+
+---
+
 ## Setup order
 
 Run Terraform in this order:
@@ -413,7 +447,7 @@ Example: add `project-b`
 Scaffold it from the template:
 
 ```bash
-python .github/scripts/new_project.py project-b aws-project-b@example.com 10.21.0.0/16
+uv run .github/scripts/new_project.py project-b aws-project-b@example.com 10.21.0.0/16
 ```
 
 This creates:
