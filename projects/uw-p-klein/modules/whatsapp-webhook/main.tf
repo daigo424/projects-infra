@@ -71,3 +71,10 @@ resource "aws_lambda_permission" "function_url_public" {
   principal              = "*"
   function_url_auth_type = "NONE"
 }
+
+resource "aws_lambda_permission" "function_public" {
+  statement_id  = "AllowPublicInvokeFunction"
+  action        = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.webhook.function_name
+  principal     = "*"
+}
