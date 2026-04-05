@@ -53,6 +53,12 @@ resource "aws_lambda_function" "webhook" {
     }
   }
 
+  lifecycle {
+    ignore_changes = [
+      environment
+    ]
+  }
+
   depends_on = [
     aws_iam_role_policy_attachment.basic,
     aws_cloudwatch_log_group.lambda
