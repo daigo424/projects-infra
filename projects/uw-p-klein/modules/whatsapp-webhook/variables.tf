@@ -1,13 +1,6 @@
-variable "aws_region" {
-  type = string
-}
-
-variable "name_prefix" {
-  type = string
-}
-
-variable "vpc_cidr" {
-  type = string
+variable "project" {
+  type    = string
+  default = "whatsapp-webhook"
 }
 
 variable "verify_token" {
@@ -27,4 +20,9 @@ variable "phone_number_id" {
 variable "app_secret" {
   type      = string
   sensitive = true
+}
+
+variable "graph_api_version" {
+  type    = string
+  default = "v23.0"
 }
