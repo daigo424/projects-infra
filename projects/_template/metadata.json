@@ -7,5 +7,6 @@
   "role_name": "GitHubActionsProjectDeployRole",
   "account_bootstrap_path": "projects/__PROJECT_NAME__/account-bootstrap",
   "prod_path": "projects/__PROJECT_NAME__/envs/prod",
-  "enabled_for_access": true
+  "enabled_for_access": true,
+  "deploy_role_ready": false
 }
