@@ -8,5 +8,5 @@
   "account_bootstrap_path": "projects/project-a/account-bootstrap",
   "prod_path": "projects/project-a/envs/prod",
   "enabled_for_access": true,
-  "deploy_role_ready": false
+  "deploy_role_ready": true
 }
