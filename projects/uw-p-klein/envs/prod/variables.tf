@@ -9,22 +9,3 @@ variable "name_prefix" {
 variable "vpc_cidr" {
   type = string
 }
-
-variable "verify_token" {
-  type      = string
-  sensitive = true
-}
-
-variable "whatsapp_token" {
-  type      = string
-  sensitive = true
-}
-
-variable "phone_number_id" {
-  type = string
-}
-
-variable "app_secret" {
-  type      = string
-  sensitive = true
-}
