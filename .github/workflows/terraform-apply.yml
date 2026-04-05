@@ -17,6 +17,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Reject template
         run: |
@@ -42,6 +44,18 @@ jobs:
             exit 1
           fi
           echo "target=${SELECTED}" >> "$GITHUB_OUTPUT"
+
+      - name: Ensure target has changes
+        env:
+          TARGET_JSON: ${{ steps.select.outputs.target }}
+        run: |
+          DEFAULT_BRANCH='${{ github.event.repository.default_branch }}'
+          CHANGED="$(git diff --name-only "origin/${DEFAULT_BRANCH}" "$GITHUB_SHA" | jq -R -s -c 'split("\n")[:-1]')"
+          MATCHED="$(python .github/scripts/filter_changed_targets.py "[$TARGET_JSON]" "$CHANGED")"
+          if [ "$MATCHED" = "[]" ]; then
+            echo "No changes detected for target: ${{ github.event.inputs.target_path }}" >&2
+            exit 1
+          fi
 
       - name: Resolve role ARN
         id: role
