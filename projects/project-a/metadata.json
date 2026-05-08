@@ -13,7 +13,7 @@
       "deploy_role_ready": true
     },
     "test": {
-      "account_id": "",
+      "account_id": "648664873464",
       "account_email": "aws-project-a-test@example.com",
       "enabled_for_access": true,
       "deploy_role_ready": false
