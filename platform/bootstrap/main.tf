@@ -7,18 +7,29 @@ locals {
     if !startswith(rel, "_template/")
   ]
 
-  project_configs = {
-    for p in local.raw_project_configs :
-    p.project_name => p
-    if can(regex("^[0-9]{12}$", p.account_id))
+  env_configs = {
+    for pair in flatten([
+      for config in local.raw_project_configs : [
+        for env_name, env_config in config.environments : {
+          key               = "${config.project_name}-${env_name}"
+          project_name      = config.project_name
+          env_name          = env_name
+          account_id        = try(env_config.account_id, "")
+          role_name         = config.role_name
+          deploy_role_ready = try(env_config.deploy_role_ready, false)
+          state_prefix      = "projects/${config.project_name}/${env_name}"
+        }
+      ]
+    ]) : pair.key => pair
+    if can(regex("^[0-9]{12}$", pair.account_id))
   }
 
-  project_role_principals = {
-    for project_name, project in local.project_configs :
-    project_name => compact([
-      "arn:aws:iam::${project.account_id}:role/OrganizationAccountAccessRole",
-      try(project.deploy_role_ready, false)
-        ? "arn:aws:iam::${project.account_id}:role/${try(project.role_name, "GitHubActionsProjectDeployRole")}"
+  env_role_principals = {
+    for key, env in local.env_configs :
+    key => compact([
+      "arn:aws:iam::${env.account_id}:role/OrganizationAccountAccessRole",
+      env.deploy_role_ready
+        ? "arn:aws:iam::${env.account_id}:role/${env.role_name}"
         : null
     ])
   }
@@ -82,14 +93,14 @@ data "aws_iam_policy_document" "tfstate_bucket_policy" {
   }
 
   dynamic "statement" {
-    for_each = local.project_configs
+    for_each = local.env_configs
     content {
       sid    = "Allow${replace(statement.key, "-", "")}ListBucket"
       effect = "Allow"
 
       principals {
         type        = "AWS"
-        identifiers = local.project_role_principals[statement.key]
+        identifiers = local.env_role_principals[statement.key]
       }
 
       actions   = ["s3:ListBucket"]
@@ -98,22 +109,20 @@ data "aws_iam_policy_document" "tfstate_bucket_policy" {
       condition {
         test     = "StringLike"
         variable = "s3:prefix"
-        values = [
-          "projects/${statement.key}/*"
-        ]
+        values   = ["${statement.value.state_prefix}/*"]
       }
     }
   }
 
   dynamic "statement" {
-    for_each = local.project_configs
+    for_each = local.env_configs
     content {
       sid    = "Allow${replace(statement.key, "-", "")}ObjectAccess"
       effect = "Allow"
 
       principals {
         type        = "AWS"
-        identifiers = local.project_role_principals[statement.key]
+        identifiers = local.env_role_principals[statement.key]
       }
 
       actions = [
@@ -123,7 +132,7 @@ data "aws_iam_policy_document" "tfstate_bucket_policy" {
       ]
 
       resources = [
-        "${aws_s3_bucket.tfstate.arn}/projects/${statement.key}/*"
+        "${aws_s3_bucket.tfstate.arn}/${statement.value.state_prefix}/*"
       ]
     }
   }

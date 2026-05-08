@@ -19,13 +19,14 @@ def fail(message: str, exit_code: int = 1) -> NoReturn:
     raise SystemExit(exit_code)
 
 
-def parse_args() -> tuple[str, str, str]:
-    if len(sys.argv) != 4:
-        fail("usage: new_python.py <project-name> <account-email> <vpc-cidr>", exit_code=2)
+def parse_args() -> tuple[str, str, str, list[str]]:
+    if len(sys.argv) < 4:
+        fail("usage: new_project.py <project-name> <account-email> <vpc-cidr> [environments]", exit_code=2)
 
-    project_name = sys.argv[1].strip()
+    project_name  = sys.argv[1].strip()
     account_email = sys.argv[2].strip()
-    vpc_cidr = sys.argv[3].strip()
+    vpc_cidr      = sys.argv[3].strip()
+    environments  = [e.strip() for e in sys.argv[4].split(",")] if len(sys.argv) > 4 else ["prod"]
 
     if not project_name:
         fail("project-name must not be empty")
@@ -39,11 +40,15 @@ def parse_args() -> tuple[str, str, str]:
     if not vpc_cidr:
         fail("vpc-cidr must not be empty")
 
-    return project_name, account_email, vpc_cidr
+    valid_envs = {"prod", "test"}
+    for env in environments:
+        if env not in valid_envs:
+            fail(f"unknown environment '{env}'. Must be one of: {', '.join(sorted(valid_envs))}")
+
+    return project_name, account_email, vpc_cidr, environments
 
 
 def repo_root_from_script() -> Path:
-    # ./ .github/scripts/new_python.py -> repo root
     return Path(__file__).resolve().parents[2]
 
 
@@ -166,6 +171,11 @@ def register_cidr(
         writer.writerow([project_name, account_email, str(network)])
 
 
+def derive_env_email(base_email: str, project_name: str, env_name: str) -> str:
+    local, domain = base_email.rsplit("@", 1)
+    return f"{local}+{project_name}-{env_name}@{domain}"
+
+
 def replace_placeholders_in_text_files(
     target_dir: Path,
     project_name: str,
@@ -185,7 +195,6 @@ def replace_placeholders_in_text_files(
         try:
             content = path.read_text(encoding="utf-8")
         except UnicodeDecodeError:
-            # バイナリファイルは置換しない
             continue
 
         for before, after in replacements.items():
@@ -194,7 +203,12 @@ def replace_placeholders_in_text_files(
         path.write_text(content, encoding="utf-8")
 
 
-def update_metadata(target_dir: Path, project_name: str, account_email: str) -> None:
+def update_metadata(
+    target_dir: Path,
+    project_name: str,
+    account_email: str,
+    environments: list[str],
+) -> None:
     metadata_path = target_dir / "metadata.json"
     if not metadata_path.exists():
         fail(f"metadata.json not found: {metadata_path}")
@@ -204,11 +218,23 @@ def update_metadata(target_dir: Path, project_name: str, account_email: str) -> 
     except json.JSONDecodeError as exc:
         fail(f"invalid metadata.json: {metadata_path}: {exc}")
 
+    env_map = {}
+    for env_name in environments:
+        env_map[env_name] = {
+            "account_id": "",
+            "account_email": derive_env_email(account_email, project_name, env_name),
+            "enabled_for_access": True,
+            "deploy_role_ready": False,
+        }
+
     metadata["project_name"] = project_name
     metadata["display_name"] = project_name
-    metadata["account_email"] = account_email
     metadata["account_bootstrap_path"] = f"projects/{project_name}/account-bootstrap"
-    metadata["prod_path"] = f"projects/{project_name}/envs/prod"
+    metadata["envs_path"] = f"projects/{project_name}/envs"
+    metadata["environments"] = env_map
+
+    for old_field in ["account_id", "account_email", "enabled_for_access", "deploy_role_ready", "prod_path"]:
+        metadata.pop(old_field, None)
 
     metadata_path.write_text(json.dumps(metadata, indent=2) + "\n", encoding="utf-8")
 
@@ -219,6 +245,7 @@ def create_project_from_template(
     project_name: str,
     account_email: str,
     vpc_cidr: str,
+    environments: list[str],
 ) -> None:
     if not template_dir.exists():
         fail(f"template directory does not exist: {template_dir}")
@@ -231,11 +258,11 @@ def create_project_from_template(
 
     shutil.copytree(template_dir, target_dir)
     replace_placeholders_in_text_files(target_dir, project_name, account_email, vpc_cidr)
-    update_metadata(target_dir, project_name, account_email)
+    update_metadata(target_dir, project_name, account_email, environments)
 
 
 def main() -> None:
-    project_name, account_email, vpc_cidr = parse_args()
+    project_name, account_email, vpc_cidr, environments = parse_args()
     repo = repo_root_from_script()
 
     template_dir = repo / "projects" / "_template"
@@ -262,6 +289,7 @@ def main() -> None:
                 project_name=project_name,
                 account_email=account_email,
                 vpc_cidr=str(new_network),
+                environments=environments,
             )
             created = True
 
@@ -278,6 +306,9 @@ def main() -> None:
 
     print(f"Created {target_dir}")
     print(f"Registered CIDR {new_network} in {registry_csv_path}")
+    print(f"Environments: {', '.join(environments)}")
+    for env_name in environments:
+        print(f"  {env_name}: {derive_env_email(account_email, project_name, env_name)}")
 
 
 if __name__ == "__main__":

@@ -1,12 +1,16 @@
 {
   "project_name": "uw-p-klein",
   "display_name": "uw-p-klein",
-  "account_email": "ishii.daigo+aws-uw-p-klein@gmail.com",
-  "account_id": "547703943158",
   "region": "ap-northeast-1",
   "role_name": "GitHubActionsProjectDeployRole",
   "account_bootstrap_path": "projects/uw-p-klein/account-bootstrap",
-  "prod_path": "projects/uw-p-klein/envs/prod",
-  "enabled_for_access": true,
-  "deploy_role_ready": true
+  "envs_path": "projects/uw-p-klein/envs",
+  "environments": {
+    "prod": {
+      "account_id": "547703943158",
+      "account_email": "ishii.daigo+aws-uw-p-klein@gmail.com",
+      "enabled_for_access": true,
+      "deploy_role_ready": true
+    }
+  }
 }

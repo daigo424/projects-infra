@@ -6,6 +6,18 @@ locals {
     jsondecode(file("${path.root}/../../projects/${rel}")).project_name => jsondecode(file("${path.root}/../../projects/${rel}"))
     if !startswith(rel, "_template/")
   }
+
+  env_accounts = {
+    for pair in flatten([
+      for project_name, config in local.project_configs : [
+        for env_name, env_config in config.environments : {
+          key          = "${project_name}-${env_name}"
+          display_name = env_name == "prod" ? "PROD-${project_name}" : "TEST-${project_name}"
+          email        = env_config.account_email
+        }
+      ]
+    ]) : pair.key => pair
+  }
 }
 
 data "aws_organizations_organization" "org" {}
@@ -16,10 +28,10 @@ resource "aws_organizations_organizational_unit" "projects" {
 }
 
 resource "aws_organizations_account" "projects" {
-  for_each = local.project_configs
+  for_each = local.env_accounts
 
   name      = each.value.display_name
-  email     = each.value.account_email
+  email     = each.value.email
   parent_id = aws_organizations_organizational_unit.projects.id
 
   lifecycle {
