@@ -1,12 +1,16 @@
 {
   "project_name": "__PROJECT_NAME__",
   "display_name": "__PROJECT_NAME__",
-  "account_email": "__PROJECT_EMAIL__",
-  "account_id": "",
   "region": "ap-northeast-1",
   "role_name": "GitHubActionsProjectDeployRole",
   "account_bootstrap_path": "projects/__PROJECT_NAME__/account-bootstrap",
-  "prod_path": "projects/__PROJECT_NAME__/envs/prod",
-  "enabled_for_access": true,
-  "deploy_role_ready": false
+  "envs_path": "projects/__PROJECT_NAME__/envs",
+  "environments": {
+    "prod": {
+      "account_id": "",
+      "account_email": "",
+      "enabled_for_access": true,
+      "deploy_role_ready": false
+    }
+  }
 }

@@ -3,8 +3,8 @@ name: terraform-apply
 on:
   workflow_dispatch:
     inputs:
-      target_path:
-        description: "Terraform target path (for example: platform/bootstrap or projects/project-a/envs/prod)"
+      target_name:
+        description: "Terraform target name (for example: platform-bootstrap or project-a-prod)"
         required: true
         type: string
 
@@ -22,8 +22,8 @@ jobs:
 
       - name: Reject template
         run: |
-          case "${{ github.event.inputs.target_path }}" in
-            projects/_template/*)
+          case "${{ github.event.inputs.target_name }}" in
+            _template*)
               echo "_template must never be applied" >&2
               exit 1
               ;;
@@ -38,9 +38,9 @@ jobs:
       - name: Select target
         id: select
         run: |
-          SELECTED="$(echo '${{ steps.targets.outputs.targets }}' | jq -c '.[] | select(.path == "${{ github.event.inputs.target_path }}")')"
+          SELECTED="$(echo '${{ steps.targets.outputs.targets }}' | jq -c '.[] | select(.name == "${{ github.event.inputs.target_name }}")')"
           if [ -z "$SELECTED" ]; then
-            echo "Unsupported target path: ${{ github.event.inputs.target_path }}" >&2
+            echo "Unsupported target name: ${{ github.event.inputs.target_name }}" >&2
             exit 1
           fi
           echo "target=${SELECTED}" >> "$GITHUB_OUTPUT"
@@ -58,10 +58,32 @@ jobs:
 
       - uses: hashicorp/setup-terraform@v3
 
+      - name: Compute backend key
+        id: backend
+        run: |
+          KIND="$(echo '${{ steps.select.outputs.target }}' | jq -r '.kind')"
+          PROJECT="$(echo '${{ steps.select.outputs.target }}' | jq -r '.project_name // ""')"
+          ENV="$(echo '${{ steps.select.outputs.target }}' | jq -r '.environment // ""')"
+          if [ "$KIND" = "project-bootstrap" ]; then
+            echo "key=projects/${PROJECT}/${ENV}/account-bootstrap/terraform.tfstate" >> "$GITHUB_OUTPUT"
+          elif [ "$KIND" = "project" ]; then
+            echo "key=projects/${PROJECT}/${ENV}/terraform.tfstate" >> "$GITHUB_OUTPUT"
+          else
+            echo "key=" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Terraform init
-        working-directory: ${{ github.event.inputs.target_path }}
-        run: terraform init -backend-config=backend.hcl
+        working-directory: ${{ fromJson(steps.select.outputs.target).path }}
+        run: |
+          KEY="${{ steps.backend.outputs.key }}"
+          if [ -n "$KEY" ]; then
+            terraform init -backend-config=backend.hcl -backend-config="key=${KEY}"
+          else
+            terraform init -backend-config=backend.hcl
+          fi
 
       - name: Terraform apply
-        working-directory: ${{ github.event.inputs.target_path }}
+        working-directory: ${{ fromJson(steps.select.outputs.target).path }}
+        env:
+          TF_VAR_environment: ${{ fromJson(steps.select.outputs.target).environment }}
         run: terraform apply -input=false -auto-approve

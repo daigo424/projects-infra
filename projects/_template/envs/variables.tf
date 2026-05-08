@@ -2,7 +2,11 @@ variable "aws_region" {
   type = string
 }
 
-variable "name_prefix" {
+variable "project_name" {
+  type = string
+}
+
+variable "environment" {
   type = string
 }
 

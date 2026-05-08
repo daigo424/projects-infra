@@ -4,6 +4,6 @@ output "projects_ou_id" {
 
 output "project_account_ids" {
   value = {
-    for k, v in aws_organizations_account.projects : k => v.id
+    for k, acc in aws_organizations_account.projects : k => acc.id
   }
 }

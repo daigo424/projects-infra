@@ -7,10 +7,17 @@ locals {
     if !startswith(rel, "_template/")
   ]
 
-  project_configs = {
-    for p in local.raw_project_configs :
-    p.project_name => p
-    if try(p.enabled_for_access, false) && can(regex("^[0-9]{12}$", p.account_id))
+  env_configs = {
+    for pair in flatten([
+      for config in local.raw_project_configs : [
+        for env_name, env_config in config.environments : {
+          key        = "${config.project_name}-${env_name}"
+          account_id = try(env_config.account_id, "")
+          enabled    = try(env_config.enabled_for_access, false)
+        }
+      ]
+    ]) : pair.key => pair
+    if try(pair.enabled, false) && can(regex("^[0-9]{12}$", pair.account_id))
   }
 }
 
@@ -27,7 +34,7 @@ resource "aws_ssoadmin_managed_policy_attachment" "admin" {
 }
 
 resource "aws_ssoadmin_account_assignment" "project_access" {
-  for_each = local.project_configs
+  for_each = local.env_configs
 
   instance_arn       = var.identity_center_instance_arn
   permission_set_arn = aws_ssoadmin_permission_set.admin.arn

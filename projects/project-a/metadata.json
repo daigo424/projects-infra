@@ -1,12 +1,22 @@
 {
   "project_name": "project-a",
   "display_name": "project-a",
-  "account_email": "aws-project-a@example.com",
-  "account_id": "427025827623",
   "region": "ap-northeast-1",
   "role_name": "GitHubActionsProjectDeployRole",
   "account_bootstrap_path": "projects/project-a/account-bootstrap",
-  "prod_path": "projects/project-a/envs/prod",
-  "enabled_for_access": true,
-  "deploy_role_ready": true
+  "envs_path": "projects/project-a/envs",
+  "environments": {
+    "prod": {
+      "account_id": "427025827623",
+      "account_email": "aws-project-a@example.com",
+      "enabled_for_access": true,
+      "deploy_role_ready": true
+    },
+    "test": {
+      "account_id": "648664873464",
+      "account_email": "aws-project-a-test@example.com",
+      "enabled_for_access": true,
+      "deploy_role_ready": true
+    }
+  }
 }

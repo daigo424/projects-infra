@@ -33,18 +33,22 @@ for metadata_file in sorted(projects_dir.glob("*/metadata.json")):
         continue
     metadata = json.loads(metadata_file.read_text(encoding="utf-8"))
     project_name = metadata["project_name"]
-    targets.append({
-        "name": f"{project_name}-account-bootstrap",
-        "path": metadata["account_bootstrap_path"],
-        "kind": "project-bootstrap",
-        "project_name": project_name
-    })
-    if not metadata.get("terraform_repo"):
+
+    for env_name in metadata.get("environments", {}).keys():
         targets.append({
-            "name": f"{project_name}-prod",
-            "path": metadata["prod_path"],
-            "kind": "project",
-            "project_name": project_name
+            "name": f"{project_name}-{env_name}-account-bootstrap",
+            "path": metadata["account_bootstrap_path"],
+            "kind": "project-bootstrap",
+            "project_name": project_name,
+            "environment": env_name,
         })
+        if not metadata.get("terraform_repo"):
+            targets.append({
+                "name": f"{project_name}-{env_name}",
+                "path": metadata["envs_path"],
+                "kind": "project",
+                "project_name": project_name,
+                "environment": env_name,
+            })
 
 print(json.dumps(targets))

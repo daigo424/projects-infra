@@ -85,10 +85,31 @@ jobs:
       - uses: hashicorp/setup-terraform@v3
         if: steps.match.outputs.skip != 'true'
 
+      - name: Compute backend key
+        if: steps.match.outputs.skip != 'true'
+        id: backend
+        run: |
+          KIND="${{ matrix.target.kind }}"
+          PROJECT="${{ matrix.target.project_name }}"
+          ENV="${{ matrix.target.environment }}"
+          if [ "$KIND" = "project-bootstrap" ]; then
+            echo "key=projects/${PROJECT}/${ENV}/account-bootstrap/terraform.tfstate" >> "$GITHUB_OUTPUT"
+          elif [ "$KIND" = "project" ]; then
+            echo "key=projects/${PROJECT}/${ENV}/terraform.tfstate" >> "$GITHUB_OUTPUT"
+          else
+            echo "key=" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Terraform init
         if: steps.match.outputs.skip != 'true'
         working-directory: ${{ matrix.target.path }}
-        run: terraform init -backend-config=backend.hcl
+        run: |
+          KEY="${{ steps.backend.outputs.key }}"
+          if [ -n "$KEY" ]; then
+            terraform init -backend-config=backend.hcl -backend-config="key=${KEY}"
+          else
+            terraform init -backend-config=backend.hcl
+          fi
 
       - name: Terraform fmt
         if: steps.match.outputs.skip != 'true'
@@ -103,4 +124,6 @@ jobs:
       - name: Terraform plan
         if: steps.match.outputs.skip != 'true'
         working-directory: ${{ matrix.target.path }}
+        env:
+          TF_VAR_environment: ${{ matrix.target.environment }}
         run: terraform plan -input=false -no-color
