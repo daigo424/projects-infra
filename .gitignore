@@ -9,7 +9,11 @@ crash.*.log
 **/*.auto.tfvars.local
 **/secrets.auto.tfvars
 
-# Editor / OS
-.DS_Store
-.vscode/
-.idea/
+tmp/
+.*/
+!.github/
+!.repo-meta/
+
+# Provide Plugin Cache directory for Terraform
+terraform.rc
+.terraformrc
