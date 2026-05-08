@@ -25,7 +25,7 @@ if not project_name:
 metadata_path = repo / "projects" / project_name / "metadata.json"
 metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
 
-if target["kind"] == "project-bootstrap":
+if target["kind"] == "project-bootstrap" and not metadata.get("deploy_role_ready"):
     platform = json.loads((repo / "platform" / "metadata.json").read_text(encoding="utf-8"))
     print(f"arn:aws:iam::{platform['management_account_id']}:role/{platform['platform_role_name']}")
     sys.exit(0)
