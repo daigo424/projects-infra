@@ -1,115 +1,123 @@
 # Projects Infra
 
-This repository is AWS multi-account Terraform monorepo.
-
-## 🚀 Quick Start (Recommended)
-
-Create a new project with a single command:
-
-```bash
-py .github/scripts/create_project.py project-b aws-project-b@example.com 10.21.0.0/16
-```
-
-This will automatically:
-
-- Create project scaffold
-- Validate CIDR (no overlap)
-- Create AWS account
-- Update metadata.json
-- Configure S3 state access
-- Configure IAM Identity Center access
-- Assume OrganizationAccountAccessRole
-- Create deploy role
-- Enable GitHub Actions
-- Optionally deploy infrastructure
-
-You only need to approve Terraform apply steps.
-
----
+AWS multi-account Terraform monorepo.
 
 ## 📁 Repository Layout
 
 ```
-platform/   # management account resources
-projects/   # per-project AWS accounts
-.github/    # workflows and scripts
+platform/                     # Management account resources
+  bootstrap/                  # S3 state bucket and access policies
+  accounts/                   # AWS Organizations account creation
+  identity/                   # GitHub OIDC provider (management account)
+  access/                     # IAM Identity Center configuration
+  modules/github_oidc_role/   # Reusable OIDC role module
+  metadata.json               # Management account configuration
+
+projects/                     # Per-project AWS accounts
+  _template/                  # Template for new projects (never applied)
+  _external_template/         # Template for externally managed projects
+  <project-name>/
+    account-bootstrap/        # OIDC provider and deploy role setup
+    envs/prod/                # Infrastructure resources (when managed here)
+    modules/                  # Project-specific modules
+    metadata.json             # Project configuration
+
+.github/
+  workflows/
+    terraform-plan.yml        # Auto-detect changed targets and plan on PR
+    terraform-apply.yml       # Manual dispatch to apply
+  scripts/
+    create_project.py         # Project creation script
+    discover_targets.py       # Terraform target discovery
+    filter_changed_targets.py # Filter targets by git diff
+    resolve_role_arn.py       # Resolve IAM role for each target
 ```
 
 ---
 
-## 🔐 S3 State Model
+## ⚙️ GitHub Actions
 
-- Centralized state bucket (management account)
-- Prefix-based access:
+### Plan (on PR)
 
-```
-projects/<project-name>/*
-```
+Opening a PR with changes under `platform/**` or `projects/**` automatically runs `terraform plan` for each changed target.
 
-- Automatically managed via metadata.json
-- No manual bucket policy edits required
+### Apply (manual)
+
+Trigger `terraform-apply.yml` via workflow dispatch, specifying the `target_path` (e.g. `projects/my-project/account-bootstrap`).
+
+### Authentication (OIDC)
+
+No static AWS credentials are stored. GitHub OIDC is used to assume the appropriate role per target.
+
+| Target kind | Role assumed |
+|---|---|
+| `platform`, `platform-bootstrap` | `GitHubActionsPlatformRole` (management account) |
+| `project-bootstrap` (deploy_role_ready=false) | `GitHubActionsPlatformRole` (management account) |
+| `project-bootstrap` (deploy_role_ready=true) | `GitHubActionsProjectDeployRole` (project account) |
+| `project` | `GitHubActionsProjectDeployRole` (project account) |
 
 ---
 
-## 🧠 Execution Model
+## 🗂 Two Terraform Management Modes
 
-- Uses OrganizationAccountAccessRole via assume-role
-- No need for per-project AWS profiles
-- Fully automated by script
+### Managed in this repo (default)
+
+Place `envs/prod/` in this repo and let GitHub Actions handle plan/apply.
+
+### Managed in an external repo
+
+Set `terraform_repo` in `metadata.json` to opt a project out of this repo's GitHub Actions. The external repo manages `envs/prod/` independently.
+
+```json
+{
+  "terraform_repo": "org/external-repo-name"
+}
+```
+
+See `projects/_external_template/` for the workflow and backend configuration to place in the external repo.
+
+To make the account-bootstrap OIDC role trust the external repo, add the following to `terraform.auto.tfvars` and re-apply `account-bootstrap`:
+
+```hcl
+additional_github_repos = ["org/external-repo-name"]
+```
 
 ---
 
-## ⚙️ Initial Setup (One-time)
+## ➕ Adding a Project
 
 ```bash
-cd platform/bootstrap
-terraform apply
-
-cd platform/identity
-terraform apply
+py .github/scripts/create_project.py <project-name> <email> <vpc-cidr>
 ```
+
+Steps performed:
+
+1. Scaffold project directory from `_template`
+2. Apply `platform/accounts` — create AWS account
+3. Record `account_id` in `metadata.json`
+4. Apply `platform/bootstrap` — update S3 access policy
+5. Apply `platform/access` — configure IAM Identity Center
+6. Assume `OrganizationAccountAccessRole` in the new account
+7. Apply `account-bootstrap` — create OIDC provider and deploy role
+8. Set `deploy_role_ready=true` in `metadata.json`
+9. Apply `platform/bootstrap` — add S3 policy for deploy role
+10. (Optional) Apply `envs/prod` — deploy infrastructure
 
 ---
 
-## ➕ Add Project
+## 🗃 S3 State
+
+- All state is stored in a single S3 bucket in the management account
+- Per-project isolation via key prefix: `projects/<project-name>/*`
+- Bucket policies are managed automatically from `metadata.json`
+
+---
+
+## ⚙️ Initial Setup (one-time)
 
 ```bash
-py .github/scripts/create_project.py project-b aws-project-b@example.com 10.21.0.0/16
-```
-
----
-
-## 🔧 Manual Flow (Advanced)
-
-1. new_project.py
-2. platform/accounts
-3. update metadata.json
-4. platform/bootstrap
-5. platform/access
-6. account-bootstrap
-7. set deploy_role_ready=true
-8. platform/bootstrap
-9. envs/prod
-
----
-
-## 💰 Cost Notes
-
-- No NAT Gateway by default
-- Minimal infra footprint
-- Watch:
-  - NAT Gateway
-  - Public IP
-  - ALB/NLB
-  - EC2/RDS
-
----
-
-## ✅ Checklist
-
-```
-[ ] platform/bootstrap applied
-[ ] platform/identity applied
-[ ] project created
-[ ] infrastructure deployed
+cd platform/bootstrap && terraform apply
+cd platform/identity  && terraform apply
+cd platform/accounts  && terraform apply
+cd platform/access    && terraform apply
 ```
