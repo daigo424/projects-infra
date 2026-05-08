@@ -39,11 +39,12 @@ for metadata_file in sorted(projects_dir.glob("*/metadata.json")):
         "kind": "project-bootstrap",
         "project_name": project_name
     })
-    targets.append({
-        "name": f"{project_name}-prod",
-        "path": metadata["prod_path"],
-        "kind": "project",
-        "project_name": project_name
-    })
+    if not metadata.get("terraform_repo"):
+        targets.append({
+            "name": f"{project_name}-prod",
+            "path": metadata["prod_path"],
+            "kind": "project",
+            "project_name": project_name
+        })
 
 print(json.dumps(targets))

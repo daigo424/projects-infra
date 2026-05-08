@@ -20,3 +20,9 @@ variable "oidc_provider_arn" {
   type        = string
   default     = null
 }
+
+variable "additional_github_repos" {
+  description = "Additional GitHub repos to trust for OIDC (format: org/repo). Set when Terraform is managed in a separate repo."
+  type        = list(string)
+  default     = []
+}

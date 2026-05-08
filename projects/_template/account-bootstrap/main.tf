@@ -10,6 +10,15 @@ resource "aws_iam_openid_connect_provider" "github" {
 
 locals {
   effective_oidc_provider_arn = var.oidc_provider_arn != null ? var.oidc_provider_arn : aws_iam_openid_connect_provider.github[0].arn
+
+  trusted_repos = concat(["${var.github_org}/${var.github_repo}"], var.additional_github_repos)
+  trusted_subs = flatten([
+    for repo in local.trusted_repos : [
+      "repo:${repo}:ref:refs/heads/main",
+      "repo:${repo}:pull_request",
+      "repo:${repo}:ref:refs/tags/*",
+    ]
+  ])
 }
 
 data "aws_iam_policy_document" "assume" {
@@ -31,11 +40,7 @@ data "aws_iam_policy_document" "assume" {
     condition {
       test     = "StringLike"
       variable = "token.actions.githubusercontent.com:sub"
-      values = [
-        "repo:${var.github_org}/${var.github_repo}:ref:refs/heads/main",
-        "repo:${var.github_org}/${var.github_repo}:pull_request",
-        "repo:${var.github_org}/${var.github_repo}:ref:refs/tags/*"
-      ]
+      values   = local.trusted_subs
     }
   }
 }
