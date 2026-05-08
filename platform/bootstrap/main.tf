@@ -29,8 +29,8 @@ locals {
     key => compact([
       "arn:aws:iam::${env.account_id}:role/OrganizationAccountAccessRole",
       env.deploy_role_ready
-        ? "arn:aws:iam::${env.account_id}:role/${env.role_name}"
-        : null
+      ? "arn:aws:iam::${env.account_id}:role/${env.role_name}"
+      : null
     ])
   }
 }
@@ -78,7 +78,7 @@ data "aws_iam_policy_document" "tfstate_bucket_policy" {
     effect = "Allow"
 
     principals {
-      type        = "AWS"
+      type = "AWS"
       identifiers = [
         "arn:aws:iam::${data.aws_caller_identity.current.account_id}:root"
       ]
