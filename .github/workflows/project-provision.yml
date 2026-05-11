@@ -116,7 +116,7 @@ jobs:
           git checkout -b "$BRANCH"
           git add "projects/${NAME}/metadata.json"
           git commit -m "chore: set account IDs for ${NAME}"
-          git push origin "$BRANCH"
+          git push --force-with-lease origin "$BRANCH"
 
       - name: Phase 2 — Create PR [2/3]
         if: steps.detect.outputs.phase == '2'
@@ -124,6 +124,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           NAME: ${{ steps.detect.outputs.name }}
         run: |
+          gh pr list --head "provision/${NAME}/accounts" --json number --jq '.[0].number' | grep -q . || \
           gh pr create \
             --head "provision/${NAME}/accounts" \
             --base main \
@@ -205,7 +206,7 @@ jobs:
           git checkout -b "$BRANCH"
           git add "projects/${NAME}/metadata.json"
           git commit -m "chore: mark deploy role ready for ${NAME}"
-          git push origin "$BRANCH"
+          git push --force-with-lease origin "$BRANCH"
 
       - name: Phase 3 — Create PR [3/3]
         if: steps.detect.outputs.phase == '3'
@@ -213,6 +214,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           NAME: ${{ steps.detect.outputs.name }}
         run: |
+          gh pr list --head "provision/${NAME}/deploy-role" --json number --jq '.[0].number' | grep -q . || \
           gh pr create \
             --head "provision/${NAME}/deploy-role" \
             --base main \
