@@ -12,7 +12,7 @@ on:
         required: true
         type: string
       vpc_cidr:
-        description: "VPC CIDR block (e.g. 10.1.0.0/16)"
+        description: VPC CIDR block (e.g. 10.1.0.0/16)"
         required: true
         type: string
       environments:
@@ -91,8 +91,9 @@ jobs:
           git checkout -b "$BRANCH"
           git add "projects/${NAME}/" ".repo-meta/"
           git commit -m "feat: add project ${NAME} (external: ${TERRAFORM_REPO})"
-          git push origin "$BRANCH"
+          git push --force-with-lease origin "$BRANCH"
 
+          gh pr list --head "$BRANCH" --json number --jq '.[0].number' | grep -q . || \
           gh pr create \
             --title "[1/3] feat: add project ${NAME}" \
             --body "$(cat <<EOF
