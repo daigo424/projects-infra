@@ -91,7 +91,7 @@ jobs:
           git checkout -b "$BRANCH"
           git add "projects/${NAME}/" ".repo-meta/"
           git commit -m "feat: add project ${NAME} (external: ${TERRAFORM_REPO})"
-          git push --force-with-lease origin "$BRANCH"
+          git push --force origin "$BRANCH"
 
           gh pr list --head "$BRANCH" --json number --jq '.[0].number' | grep -q . || \
           gh pr create \
