@@ -19,23 +19,21 @@ def fail(message: str, exit_code: int = 1) -> NoReturn:
     raise SystemExit(exit_code)
 
 
-def parse_args() -> tuple[str, str, str, list[str]]:
-    if len(sys.argv) < 4:
-        fail("usage: new_project.py <project-name> <account-email> <vpc-cidr> [environments]", exit_code=2)
+def parse_args() -> tuple[str, str, list[str], dict[str, str]]:
+    if len(sys.argv) < 5:
+        fail(
+            "usage: new_project.py <project-name> <vpc-cidr> <environments> <prod-email> [<test-email>]",
+            exit_code=2,
+        )
 
-    project_name  = sys.argv[1].strip()
-    account_email = sys.argv[2].strip()
-    vpc_cidr      = sys.argv[3].strip()
-    environments  = [e.strip() for e in sys.argv[4].split(",")] if len(sys.argv) > 4 else ["prod"]
+    project_name = sys.argv[1].strip()
+    vpc_cidr     = sys.argv[2].strip()
+    environments = [e.strip() for e in sys.argv[3].split(",")]
+    prod_email   = sys.argv[4].strip()
+    test_email   = sys.argv[5].strip() if len(sys.argv) > 5 else ""
 
     if not project_name:
         fail("project-name must not be empty")
-
-    if not account_email:
-        fail("account-email must not be empty")
-
-    if "@" not in account_email:
-        fail(f"invalid account email: {account_email}")
 
     if not vpc_cidr:
         fail("vpc-cidr must not be empty")
@@ -45,7 +43,24 @@ def parse_args() -> tuple[str, str, str, list[str]]:
         if env not in valid_envs:
             fail(f"unknown environment '{env}'. Must be one of: {', '.join(sorted(valid_envs))}")
 
-    return project_name, account_email, vpc_cidr, environments
+    env_emails: dict[str, str] = {"prod": prod_email}
+    if "test" in environments:
+        if not test_email:
+            fail("test-email is required when environments includes 'test'")
+        env_emails["test"] = test_email
+
+    for env, email in env_emails.items():
+        if not email:
+            fail(f"email for '{env}' must not be empty")
+        if "@" not in email:
+            fail(f"invalid email for '{env}': {email}")
+        if len(email) > 64:
+            fail(
+                f"Email for '{env}' too long ({len(email)} chars, max 64 for AWS Organizations):\n"
+                f"  {email}"
+            )
+
+    return project_name, vpc_cidr, environments, env_emails
 
 
 def repo_root_from_script() -> Path:
@@ -171,20 +186,15 @@ def register_cidr(
         writer.writerow([project_name, account_email, str(network)])
 
 
-def derive_env_email(base_email: str, project_name: str, env_name: str) -> str:
-    local, domain = base_email.rsplit("@", 1)
-    return f"{local}+{project_name}-{env_name}@{domain}"
-
-
 def replace_placeholders_in_text_files(
     target_dir: Path,
     project_name: str,
-    account_email: str,
+    prod_email: str,
     vpc_cidr: str,
 ) -> None:
     replacements = {
         "__PROJECT_NAME__": project_name,
-        "__PROJECT_EMAIL__": account_email,
+        "__PROJECT_EMAIL__": prod_email,
         "__PROJECT_CIDR__": vpc_cidr,
     }
 
@@ -206,8 +216,8 @@ def replace_placeholders_in_text_files(
 def update_metadata(
     target_dir: Path,
     project_name: str,
-    account_email: str,
     environments: list[str],
+    env_emails: dict[str, str],
 ) -> None:
     metadata_path = target_dir / "metadata.json"
     if not metadata_path.exists():
@@ -222,7 +232,7 @@ def update_metadata(
     for env_name in environments:
         env_map[env_name] = {
             "account_id": "",
-            "account_email": derive_env_email(account_email, project_name, env_name),
+            "account_email": env_emails[env_name],
             "enabled_for_access": True,
             "deploy_role_ready": False,
         }
@@ -243,9 +253,9 @@ def create_project_from_template(
     template_dir: Path,
     target_dir: Path,
     project_name: str,
-    account_email: str,
     vpc_cidr: str,
     environments: list[str],
+    env_emails: dict[str, str],
 ) -> None:
     if not template_dir.exists():
         fail(f"template directory does not exist: {template_dir}")
@@ -257,12 +267,12 @@ def create_project_from_template(
         fail(f"{target_dir} already exists")
 
     shutil.copytree(template_dir, target_dir)
-    replace_placeholders_in_text_files(target_dir, project_name, account_email, vpc_cidr)
-    update_metadata(target_dir, project_name, account_email, environments)
+    replace_placeholders_in_text_files(target_dir, project_name, env_emails["prod"], vpc_cidr)
+    update_metadata(target_dir, project_name, environments, env_emails)
 
 
 def main() -> None:
-    project_name, account_email, vpc_cidr, environments = parse_args()
+    project_name, vpc_cidr, environments, env_emails = parse_args()
     repo = repo_root_from_script()
 
     template_dir = repo / "projects" / "_template"
@@ -279,7 +289,7 @@ def main() -> None:
 
     with lock:
         rows = load_registry_rows(registry_csv_path)
-        validate_registry_conflicts(rows, project_name, account_email, new_network)
+        validate_registry_conflicts(rows, project_name, env_emails["prod"], new_network)
 
         created = False
         try:
@@ -287,16 +297,16 @@ def main() -> None:
                 template_dir=template_dir,
                 target_dir=target_dir,
                 project_name=project_name,
-                account_email=account_email,
                 vpc_cidr=str(new_network),
                 environments=environments,
+                env_emails=env_emails,
             )
             created = True
 
             register_cidr(
                 csv_path=registry_csv_path,
                 project_name=project_name,
-                account_email=account_email,
+                account_email=env_emails["prod"],
                 network=new_network,
             )
         except Exception:
