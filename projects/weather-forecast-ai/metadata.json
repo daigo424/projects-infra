@@ -1,0 +1,23 @@
+{
+  "project_name": "weather-forecast-ai",
+  "display_name": "weather-forecast-ai",
+  "region": "ap-northeast-1",
+  "role_name": "GitHubActionsProjectDeployRole",
+  "account_bootstrap_path": "projects/weather-forecast-ai/account-bootstrap",
+  "envs_path": "projects/weather-forecast-ai/envs",
+  "environments": {
+    "prod": {
+      "account_id": "",
+      "account_email": "ishii.daigo+aws-weather-forecast-ai+weather-forecast-ai-prod@gmail.com",
+      "enabled_for_access": true,
+      "deploy_role_ready": false
+    },
+    "test": {
+      "account_id": "",
+      "account_email": "ishii.daigo+aws-weather-forecast-ai+weather-forecast-ai-test@gmail.com",
+      "enabled_for_access": true,
+      "deploy_role_ready": false
+    }
+  },
+  "terraform_repo": "daigo424/weather-forecast-ai"
+}
