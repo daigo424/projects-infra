@@ -18,7 +18,7 @@ projects/                     # プロジェクトごとの AWS アカウント
   _external_template/         # 外部リポジトリ管理プロジェクト用テンプレート
   <project-name>/
     account-bootstrap/        # OIDC プロバイダー・デプロイロール作成
-    envs/prod/                # インフラリソース（本リポジトリ管理の場合）
+    envs/                     # インフラリソース（環境は var.environment で切替）
     modules/                  # プロジェクト固有モジュール
     metadata.json             # プロジェクト設定
 
@@ -43,7 +43,7 @@ projects/                     # プロジェクトごとの AWS アカウント
 
 ### Apply（手動）
 
-`terraform-apply.yml` を workflow dispatch で実行。`target_path` にパスを指定する（例: `projects/my-project/account-bootstrap`）。
+`terraform-apply.yml` を workflow dispatch で実行。`target_name` にターゲット名を指定する（例: `project-a-prod`、`project-a-test-account-bootstrap`）。
 
 ### 認証（OIDC）
 
@@ -52,7 +52,7 @@ projects/                     # プロジェクトごとの AWS アカウント
 | ターゲット種別 | 使用ロール |
 |---|---|
 | `platform`, `platform-bootstrap` | 管理アカウントの `GitHubActionsPlatformRole` |
-| `project-bootstrap`（deploy_role_ready=false） | 管理アカウントの `GitHubActionsPlatformRole` |
+| `project-bootstrap`（deploy_role_ready=false） | ① `GitHubActionsPlatformRole` → ② `OrganizationAccountAccessRole`（プロジェクトアカウント）へ chain |
 | `project-bootstrap`（deploy_role_ready=true） | プロジェクトアカウントの `GitHubActionsProjectDeployRole` |
 | `project` | プロジェクトアカウントの `GitHubActionsProjectDeployRole` |
 
@@ -62,11 +62,11 @@ projects/                     # プロジェクトごとの AWS アカウント
 
 ### 本リポジトリ管理（デフォルト）
 
-`envs/prod/` を本リポジトリに置き、GitHub Actions で plan/apply する。
+`envs/` を本リポジトリに置き、GitHub Actions で plan/apply する。`environment` 変数は CI 実行時に `TF_VAR_environment` として注入される。
 
 ### 外部リポジトリ管理
 
-`metadata.json` に `terraform_repo` を指定すると、本リポジトリの GitHub Actions は `envs/prod` を対象外とし、指定リポジトリ側で管理する。
+`metadata.json` に `terraform_repo` を指定すると、本リポジトリの GitHub Actions は `envs/` を対象外とし、指定リポジトリ側で管理する。
 
 ```json
 {
@@ -87,28 +87,29 @@ additional_github_repos = ["org/external-repo-name"]
 ## ➕ プロジェクト追加
 
 ```bash
-py .github/scripts/create_project.py <project-name> <email> <vpc-cidr>
+py .github/scripts/create_project.py <project-name> <email> <vpc-cidr> [environments]
+# 例（prod のみ）:     py .github/scripts/create_project.py my-project me@example.com 10.0.0.0/16
+# 例（prod + test）:   py .github/scripts/create_project.py my-project me@example.com 10.0.0.0/16 prod,test
 ```
 
-実行される処理:
+各環境について以下の処理が実行される:
 
 1. `_template` からプロジェクトディレクトリを生成
-2. `platform/accounts` apply → AWS アカウント作成
+2. `platform/accounts` apply → AWS アカウント作成（`PROD-<project>` / `TEST-<project>`）
 3. `metadata.json` に `account_id` を記録
 4. `platform/bootstrap` apply → S3 アクセスポリシー更新
 5. `platform/access` apply → IAM Identity Center 設定
-6. `OrganizationAccountAccessRole` を assume
-7. `account-bootstrap` apply → OIDC プロバイダー・デプロイロール作成
-8. `metadata.json` に `deploy_role_ready=true` を記録
-9. `platform/bootstrap` apply → デプロイロール用 S3 ポリシー追加
-10. （任意）`envs/prod` apply → インフラデプロイ
+6. `account-bootstrap` apply → OIDC プロバイダー・デプロイロール作成（GitHub Actions が `OrganizationAccountAccessRole` へ role-chaining して実行）
+7. `metadata.json` に `deploy_role_ready=true` を記録
+8. `platform/bootstrap` apply → デプロイロール用 S3 ポリシー追加
+9. （任意）`envs` apply（`TF_VAR_environment=<env>`）→ インフラデプロイ
 
 ---
 
 ## 🗃 S3 ステート管理
 
 - 管理アカウントの S3 バケットに全ステートを集約
-- プロジェクトごとにプレフィックスで分離: `projects/<project-name>/*`
+- 環境ごとにプレフィックスで分離: `projects/<project-name>/<env>/*`
 - `metadata.json` を元に自動でバケットポリシーを管理
 
 ---
