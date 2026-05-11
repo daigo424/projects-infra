@@ -24,10 +24,12 @@ projects/                     # Per-project AWS accounts
 
 .github/
   workflows/
-    terraform-plan.yml        # Auto-detect changed targets and plan on PR
-    terraform-apply.yml       # Manual dispatch to apply
+    terraform-plan.yml           # Auto-detect changed targets and plan on PR
+    terraform-apply.yml          # Manual dispatch to apply
+    create-project.yml           # Scaffold new project and open PR (this repo)
+    create-project-external.yml  # Scaffold new project and open PR (external repo)
   scripts/
-    create_project.py         # Project creation script
+    new_project.py            # Scaffold project directory from template
     discover_targets.py       # Terraform target discovery
     filter_changed_targets.py # Filter targets by git diff
     resolve_role_arn.py       # Resolve IAM role for each target
@@ -86,23 +88,23 @@ additional_github_repos = ["org/external-repo-name"]
 
 ## ➕ Adding a Project
 
-```bash
-py .github/scripts/create_project.py <project-name> <email> <vpc-cidr> [environments]
-# Example (prod only):    py .github/scripts/create_project.py my-project me@example.com 10.0.0.0/16
-# Example (prod + test):  py .github/scripts/create_project.py my-project me@example.com 10.0.0.0/16 prod,test
-```
+Trigger **`create-project`** (or **`create-project-external`** for external repo) from **Actions → Run workflow** with:
 
-The following steps are performed for each environment:
+| Input | Description |
+|---|---|
+| `project_name` | Project name (e.g. `my-project`) |
+| `account_email` | Base AWS account email |
+| `vpc_cidr` | VPC CIDR block (e.g. `10.1.0.0/16`) |
+| `environments` | `prod` or `prod,test` |
+| `terraform_repo` | *(external only)* External repo (e.g. `org/repo-name`) |
 
-1. Scaffold project directory from `_template`
-2. Apply `platform/accounts` — create AWS account (`PROD-<project>` or `TEST-<project>`)
-3. Record `account_id` in `metadata.json`
-4. Apply `platform/bootstrap` — update S3 access policy
-5. Apply `platform/access` — configure IAM Identity Center
-6. Apply `account-bootstrap` — create OIDC provider and deploy role (via GitHub Actions role-chaining to `OrganizationAccountAccessRole`)
-7. Set `deploy_role_ready=true` in `metadata.json`
-8. Apply `platform/bootstrap` — add S3 policy for deploy role
-9. (Optional) Apply `envs` with `TF_VAR_environment=<env>` — deploy infrastructure
+This opens PR **[1/3]**. Merging each PR automatically triggers the next terraform applies and creates the following PR. Just merge the three PRs in order:
+
+| PR | Content | Auto-applies on merge |
+|---|---|---|
+| `[1/3]` | Project scaffold | `platform-accounts` → captures account IDs |
+| `[2/3]` | `account_id` set in `metadata.json` | `platform-bootstrap`, `platform-access`, `account-bootstrap` |
+| `[3/3]` | `deploy_role_ready: true` in `metadata.json` | `platform-bootstrap` (final S3 policy update) |
 
 ---
 

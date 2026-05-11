@@ -24,10 +24,12 @@ projects/                     # プロジェクトごとの AWS アカウント
 
 .github/
   workflows/
-    terraform-plan.yml        # PR 時に変更対象を自動検出して plan
-    terraform-apply.yml       # 手動 dispatch で apply
+    terraform-plan.yml           # PR 時に変更対象を自動検出して plan
+    terraform-apply.yml          # 手動 dispatch で apply
+    create-project.yml           # プロジェクト追加 PR 作成（本リポジトリ管理）
+    create-project-external.yml  # プロジェクト追加 PR 作成（外部リポジトリ管理）
   scripts/
-    create_project.py         # プロジェクト作成スクリプト
+    new_project.py            # テンプレートからプロジェクトディレクトリを生成
     discover_targets.py       # Terraform ターゲット自動検出
     filter_changed_targets.py # 変更差分によるターゲット絞り込み
     resolve_role_arn.py       # ターゲットに応じた IAM ロール解決
@@ -86,23 +88,23 @@ additional_github_repos = ["org/external-repo-name"]
 
 ## ➕ プロジェクト追加
 
-```bash
-py .github/scripts/create_project.py <project-name> <email> <vpc-cidr> [environments]
-# 例（prod のみ）:     py .github/scripts/create_project.py my-project me@example.com 10.0.0.0/16
-# 例（prod + test）:   py .github/scripts/create_project.py my-project me@example.com 10.0.0.0/16 prod,test
-```
+**Actions → Run workflow** から **`create-project`**（外部リポジトリ管理の場合は **`create-project-external`**）を実行する。
 
-各環境について以下の処理が実行される:
+| 入力 | 説明 |
+|---|---|
+| `project_name` | プロジェクト名（例: `my-project`） |
+| `account_email` | AWS アカウントのベースメールアドレス |
+| `vpc_cidr` | VPC CIDR ブロック（例: `10.1.0.0/16`） |
+| `environments` | `prod` または `prod,test` |
+| `terraform_repo` | *（外部のみ）* 外部リポジトリ（例: `org/repo-name`） |
 
-1. `_template` からプロジェクトディレクトリを生成
-2. `platform/accounts` apply → AWS アカウント作成（`PROD-<project>` / `TEST-<project>`）
-3. `metadata.json` に `account_id` を記録
-4. `platform/bootstrap` apply → S3 アクセスポリシー更新
-5. `platform/access` apply → IAM Identity Center 設定
-6. `account-bootstrap` apply → OIDC プロバイダー・デプロイロール作成（GitHub Actions が `OrganizationAccountAccessRole` へ role-chaining して実行）
-7. `metadata.json` に `deploy_role_ready=true` を記録
-8. `platform/bootstrap` apply → デプロイロール用 S3 ポリシー追加
-9. （任意）`envs` apply（`TF_VAR_environment=<env>`）→ インフラデプロイ
+PR **[1/3]** が作成される。各 PR をマージすると次の terraform apply が自動実行され、次の PR が作成される。3 つの PR を順番にマージするだけでよい:
+
+| PR | 内容 | マージ時に自動 apply |
+|---|---|---|
+| `[1/3]` | プロジェクトのスキャフォールド | `platform-accounts` → account ID を取得 |
+| `[2/3]` | `metadata.json` に `account_id` を記録 | `platform-bootstrap`、`platform-access`、`account-bootstrap` |
+| `[3/3]` | `metadata.json` に `deploy_role_ready: true` を記録 | `platform-bootstrap`（S3 ポリシー最終更新） |
 
 ---
 
