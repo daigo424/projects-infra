@@ -56,6 +56,16 @@ jobs:
           role-to-assume: ${{ steps.role.outputs.role_arn }}
           aws-region: ap-northeast-1
 
+      - name: Chain to OrganizationAccountAccessRole
+        if: >-
+          fromJson(steps.select.outputs.target).kind == 'project-bootstrap' &&
+          !fromJson(steps.select.outputs.target).deploy_role_ready
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::${{ fromJson(steps.select.outputs.target).account_id }}:role/OrganizationAccountAccessRole
+          aws-region: ap-northeast-1
+          role-chaining: true
+
       - uses: hashicorp/setup-terraform@v3
 
       - name: Compute backend key

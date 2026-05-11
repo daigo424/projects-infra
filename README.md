@@ -18,7 +18,7 @@ projects/                     # Per-project AWS accounts
   _external_template/         # Template for externally managed projects
   <project-name>/
     account-bootstrap/        # OIDC provider and deploy role setup
-    envs/prod/                # Infrastructure resources (when managed here)
+    envs/                     # Infrastructure resources; environment injected via var.environment
     modules/                  # Project-specific modules
     metadata.json             # Project configuration
 
@@ -43,7 +43,7 @@ Opening a PR with changes under `platform/**` or `projects/**` automatically run
 
 ### Apply (manual)
 
-Trigger `terraform-apply.yml` via workflow dispatch, specifying the `target_path` (e.g. `projects/my-project/account-bootstrap`).
+Trigger `terraform-apply.yml` via workflow dispatch, specifying the `target_name` (e.g. `project-a-prod` or `project-a-test-account-bootstrap`).
 
 ### Authentication (OIDC)
 
@@ -52,7 +52,7 @@ No static AWS credentials are stored. GitHub OIDC is used to assume the appropri
 | Target kind | Role assumed |
 |---|---|
 | `platform`, `platform-bootstrap` | `GitHubActionsPlatformRole` (management account) |
-| `project-bootstrap` (deploy_role_ready=false) | `GitHubActionsPlatformRole` (management account) |
+| `project-bootstrap` (deploy_role_ready=false) | ① `GitHubActionsPlatformRole` → ② chain to `OrganizationAccountAccessRole` (project account) |
 | `project-bootstrap` (deploy_role_ready=true) | `GitHubActionsProjectDeployRole` (project account) |
 | `project` | `GitHubActionsProjectDeployRole` (project account) |
 
@@ -62,11 +62,11 @@ No static AWS credentials are stored. GitHub OIDC is used to assume the appropri
 
 ### Managed in this repo (default)
 
-Place `envs/prod/` in this repo and let GitHub Actions handle plan/apply.
+Place `envs/` in this repo and let GitHub Actions handle plan/apply. The `environment` variable is injected at CI time via `TF_VAR_environment`.
 
 ### Managed in an external repo
 
-Set `terraform_repo` in `metadata.json` to opt a project out of this repo's GitHub Actions. The external repo manages `envs/prod/` independently.
+Set `terraform_repo` in `metadata.json` to opt a project out of this repo's GitHub Actions. The external repo manages `envs/` independently.
 
 ```json
 {
@@ -87,28 +87,29 @@ additional_github_repos = ["org/external-repo-name"]
 ## ➕ Adding a Project
 
 ```bash
-py .github/scripts/create_project.py <project-name> <email> <vpc-cidr>
+py .github/scripts/create_project.py <project-name> <email> <vpc-cidr> [environments]
+# Example (prod only):    py .github/scripts/create_project.py my-project me@example.com 10.0.0.0/16
+# Example (prod + test):  py .github/scripts/create_project.py my-project me@example.com 10.0.0.0/16 prod,test
 ```
 
-Steps performed:
+The following steps are performed for each environment:
 
 1. Scaffold project directory from `_template`
-2. Apply `platform/accounts` — create AWS account
+2. Apply `platform/accounts` — create AWS account (`PROD-<project>` or `TEST-<project>`)
 3. Record `account_id` in `metadata.json`
 4. Apply `platform/bootstrap` — update S3 access policy
 5. Apply `platform/access` — configure IAM Identity Center
-6. Assume `OrganizationAccountAccessRole` in the new account
-7. Apply `account-bootstrap` — create OIDC provider and deploy role
-8. Set `deploy_role_ready=true` in `metadata.json`
-9. Apply `platform/bootstrap` — add S3 policy for deploy role
-10. (Optional) Apply `envs/prod` — deploy infrastructure
+6. Apply `account-bootstrap` — create OIDC provider and deploy role (via GitHub Actions role-chaining to `OrganizationAccountAccessRole`)
+7. Set `deploy_role_ready=true` in `metadata.json`
+8. Apply `platform/bootstrap` — add S3 policy for deploy role
+9. (Optional) Apply `envs` with `TF_VAR_environment=<env>` — deploy infrastructure
 
 ---
 
 ## 🗃 S3 State
 
 - All state is stored in a single S3 bucket in the management account
-- Per-project isolation via key prefix: `projects/<project-name>/*`
+- Per-environment isolation via key prefix: `projects/<project-name>/<env>/*`
 - Bucket policies are managed automatically from `metadata.json`
 
 ---

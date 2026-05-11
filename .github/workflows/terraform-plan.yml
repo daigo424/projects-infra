@@ -82,6 +82,17 @@ jobs:
           role-to-assume: ${{ steps.role.outputs.role_arn }}
           aws-region: ap-northeast-1
 
+      - name: Chain to OrganizationAccountAccessRole
+        if: >-
+          steps.match.outputs.skip != 'true' &&
+          matrix.target.kind == 'project-bootstrap' &&
+          matrix.target.deploy_role_ready == false
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::${{ matrix.target.account_id }}:role/OrganizationAccountAccessRole
+          aws-region: ap-northeast-1
+          role-chaining: true
+
       - uses: hashicorp/setup-terraform@v3
         if: steps.match.outputs.skip != 'true'
 

@@ -34,13 +34,15 @@ for metadata_file in sorted(projects_dir.glob("*/metadata.json")):
     metadata = json.loads(metadata_file.read_text(encoding="utf-8"))
     project_name = metadata["project_name"]
 
-    for env_name in metadata.get("environments", {}).keys():
+    for env_name, env_cfg in metadata.get("environments", {}).items():
         targets.append({
             "name": f"{project_name}-{env_name}-account-bootstrap",
             "path": metadata["account_bootstrap_path"],
             "kind": "project-bootstrap",
             "project_name": project_name,
             "environment": env_name,
+            "account_id": env_cfg.get("account_id", ""),
+            "deploy_role_ready": env_cfg.get("deploy_role_ready", False),
         })
         if not metadata.get("terraform_repo"):
             targets.append({

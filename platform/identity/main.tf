@@ -28,6 +28,11 @@ module "platform_role" {
           "s3:*"
         ]
         Resource = "*"
+      },
+      {
+        Effect   = "Allow"
+        Action   = ["sts:AssumeRole"]
+        Resource = "arn:aws:iam::*:role/OrganizationAccountAccessRole"
       }
     ]
   })
