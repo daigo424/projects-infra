@@ -11,14 +11,14 @@
       "account_email": "ishii.daigo+weather-forecast-ai-prod@gmail.com",
       "vpc_cidr": "10.22.0.0/16",
       "enabled_for_access": true,
-      "deploy_role_ready": false
+      "deploy_role_ready": true
     },
     "test": {
       "account_id": "897913033200",
       "account_email": "ishii.daigo+weather-forecast-ai-test@gmail.com",
       "vpc_cidr": "10.24.0.0/16",
       "enabled_for_access": true,
-      "deploy_role_ready": false
+      "deploy_role_ready": true
     }
   },
   "terraform_repo": "daigo424/weather-forecast-ai"
