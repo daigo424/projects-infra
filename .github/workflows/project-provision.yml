@@ -94,17 +94,17 @@ jobs:
 
           OUTPUT=$(terraform -chdir=platform/accounts output -json)
 
-          PROD_ID=$(echo "$OUTPUT" | jq -r ".account_ids.value[\"PROD-${NAME}\"]")
+          PROD_ID=$(echo "$OUTPUT" | jq -r ".project_account_ids.value[\"${NAME}-prod\"]")
           if [ "$PROD_ID" = "null" ] || [ -z "$PROD_ID" ]; then
-            echo "ERROR: account ID not found for PROD-${NAME}" >&2
+            echo "ERROR: account ID not found for ${NAME}-prod" >&2
             exit 1
           fi
           echo "prod_id=$PROD_ID" >> "$GITHUB_OUTPUT"
 
           if jq -e '.environments | has("test")' "projects/${NAME}/metadata.json" > /dev/null; then
-            TEST_ID=$(echo "$OUTPUT" | jq -r ".account_ids.value[\"TEST-${NAME}\"]")
+            TEST_ID=$(echo "$OUTPUT" | jq -r ".project_account_ids.value[\"${NAME}-test\"]")
             if [ "$TEST_ID" = "null" ] || [ -z "$TEST_ID" ]; then
-              echo "ERROR: account ID not found for TEST-${NAME}" >&2
+              echo "ERROR: account ID not found for ${NAME}-test" >&2
               exit 1
             fi
             echo "test_id=$TEST_ID" >> "$GITHUB_OUTPUT"
