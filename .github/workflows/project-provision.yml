@@ -181,13 +181,20 @@ jobs:
           META="projects/${NAME}/metadata.json"
           BOOTSTRAP_PATH=$(jq -r '.account_bootstrap_path' "$META")
 
+          PLATFORM_KEY_ID="$AWS_ACCESS_KEY_ID"
+          PLATFORM_SECRET_KEY="$AWS_SECRET_ACCESS_KEY"
+          PLATFORM_SESSION_TOKEN="$AWS_SESSION_TOKEN"
+
           for ENV in $(jq -r '.environments | keys[]' "$META"); do
             ACCOUNT_ID=$(jq -r ".environments[\"${ENV}\"].account_id" "$META")
 
-            CREDS=$(aws sts assume-role \
-              --role-arn "arn:aws:iam::${ACCOUNT_ID}:role/OrganizationAccountAccessRole" \
-              --role-session-name "provision-${NAME}-${ENV}" \
-              --query Credentials --output json)
+            CREDS=$(AWS_ACCESS_KEY_ID="$PLATFORM_KEY_ID" \
+                    AWS_SECRET_ACCESS_KEY="$PLATFORM_SECRET_KEY" \
+                    AWS_SESSION_TOKEN="$PLATFORM_SESSION_TOKEN" \
+                    aws sts assume-role \
+                      --role-arn "arn:aws:iam::${ACCOUNT_ID}:role/OrganizationAccountAccessRole" \
+                      --role-session-name "provision-${NAME}-${ENV}" \
+                      --query Credentials --output json)
 
             export AWS_ACCESS_KEY_ID=$(echo "$CREDS" | jq -r .AccessKeyId)
             export AWS_SECRET_ACCESS_KEY=$(echo "$CREDS" | jq -r .SecretAccessKey)
@@ -201,7 +208,9 @@ jobs:
             TF_VAR_environment="$ENV" terraform -chdir="$BOOTSTRAP_PATH" apply \
               -auto-approve -input=false
 
-            unset AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY AWS_SESSION_TOKEN
+            export AWS_ACCESS_KEY_ID="$PLATFORM_KEY_ID"
+            export AWS_SECRET_ACCESS_KEY="$PLATFORM_SECRET_KEY"
+            export AWS_SESSION_TOKEN="$PLATFORM_SESSION_TOKEN"
           done
 
       - name: Phase 3 — Update deploy_role_ready in metadata.json
