@@ -9,6 +9,7 @@
     "prod": {
       "account_id": "547703943158",
       "account_email": "ishii.daigo+aws-uw-p-klein@gmail.com",
+      "vpc_cidr": "10.21.0.0/16",
       "enabled_for_access": true,
       "deploy_role_ready": true
     }

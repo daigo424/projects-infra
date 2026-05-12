@@ -1,4 +1,6 @@
 project_name,account_email,vpc_cidr
-project-a,aws-project-a@example.com,10.20.0.0/16
-uw-p-klein,ishii.daigo+aws-uw-p-klein@gmail.com,10.21.0.0/16
-weather-forecast-ai,ishii.daigo+aws-weather-forecast-ai@gmail.com,10.22.0.0/16
+project-a-prod,aws-project-a@example.com,10.20.0.0/16
+project-a-test,aws-project-a-test@example.com,10.23.0.0/16
+uw-p-klein-prod,ishii.daigo+aws-uw-p-klein@gmail.com,10.21.0.0/16
+weather-forecast-ai-prod,ishii.daigo+weather-forecast-ai-prod@gmail.com,10.22.0.0/16
+weather-forecast-ai-test,ishii.daigo+weather-forecast-ai-test@gmail.com,10.24.0.0/16

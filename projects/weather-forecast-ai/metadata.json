@@ -8,13 +8,15 @@
   "environments": {
     "prod": {
       "account_id": "",
-      "account_email": "ishii.daigo+aws-weather-forecast-ai+weather-forecast-ai-prod@gmail.com",
+      "account_email": "ishii.daigo+weather-forecast-ai-prod@gmail.com",
+      "vpc_cidr": "10.22.0.0/16",
       "enabled_for_access": true,
       "deploy_role_ready": false
     },
     "test": {
       "account_id": "",
-      "account_email": "ishii.daigo+aws-weather-forecast-ai+weather-forecast-ai-test@gmail.com",
+      "account_email": "ishii.daigo+weather-forecast-ai-test@gmail.com",
+      "vpc_cidr": "10.24.0.0/16",
       "enabled_for_access": true,
       "deploy_role_ready": false
     }

@@ -4,6 +4,20 @@ on:
   pull_request:
     types: [closed]
     branches: [main]
+  workflow_dispatch:
+    inputs:
+      project_name:
+        description: "Project name (e.g. weather-forecast-ai)"
+        required: true
+        type: string
+      phase:
+        description: "Phase to run (2, 3, or 4)"
+        required: true
+        type: choice
+        options:
+          - "2"
+          - "3"
+          - "4"
 
 permissions:
   id-token: write
@@ -13,9 +27,10 @@ permissions:
 jobs:
   provision:
     if: >-
-      github.event.pull_request.merged == true &&
-      (startsWith(github.event.pull_request.head.ref, 'add-project/') ||
-       startsWith(github.event.pull_request.head.ref, 'provision/'))
+      (github.event_name == 'workflow_dispatch') ||
+      (github.event.pull_request.merged == true &&
+       (startsWith(github.event.pull_request.head.ref, 'add-project/') ||
+        startsWith(github.event.pull_request.head.ref, 'provision/')))
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -23,21 +38,26 @@ jobs:
       - name: Detect phase and project name
         id: detect
         run: |
-          BRANCH="${{ github.event.pull_request.head.ref }}"
-          if [[ "$BRANCH" == add-project/* ]]; then
-            NAME="${BRANCH#add-project/}"
-            PHASE=2
-          elif [[ "$BRANCH" == provision/*/accounts ]]; then
-            NAME="${BRANCH#provision/}"
-            NAME="${NAME%/accounts}"
-            PHASE=3
-          elif [[ "$BRANCH" == provision/*/deploy-role ]]; then
-            NAME="${BRANCH#provision/}"
-            NAME="${NAME%/deploy-role}"
-            PHASE=4
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            NAME="${{ github.event.inputs.project_name }}"
+            PHASE="${{ github.event.inputs.phase }}"
           else
-            echo "Unknown branch pattern: $BRANCH" >&2
-            exit 1
+            BRANCH="${{ github.event.pull_request.head.ref }}"
+            if [[ "$BRANCH" == add-project/* ]]; then
+              NAME="${BRANCH#add-project/}"
+              PHASE=2
+            elif [[ "$BRANCH" == provision/*/accounts ]]; then
+              NAME="${BRANCH#provision/}"
+              NAME="${NAME%/accounts}"
+              PHASE=3
+            elif [[ "$BRANCH" == provision/*/deploy-role ]]; then
+              NAME="${BRANCH#provision/}"
+              NAME="${NAME%/deploy-role}"
+              PHASE=4
+            else
+              echo "Unknown branch pattern: $BRANCH" >&2
+              exit 1
+            fi
           fi
           echo "name=$NAME" >> "$GITHUB_OUTPUT"
           echo "phase=$PHASE" >> "$GITHUB_OUTPUT"

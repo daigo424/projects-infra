@@ -96,4 +96,5 @@ jobs:
         working-directory: ${{ fromJson(steps.select.outputs.target).path }}
         env:
           TF_VAR_environment: ${{ fromJson(steps.select.outputs.target).environment }}
+          TF_VAR_vpc_cidr: ${{ fromJson(steps.select.outputs.target).vpc_cidr }}
         run: terraform apply -input=false -auto-approve

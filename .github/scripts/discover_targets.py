@@ -51,6 +51,7 @@ for metadata_file in sorted(projects_dir.glob("*/metadata.json")):
                 "kind": "project",
                 "project_name": project_name,
                 "environment": env_name,
+                "vpc_cidr": env_cfg.get("vpc_cidr", ""),
             })
 
 print(json.dumps(targets))
