@@ -1,8 +1,11 @@
-module "network" {
-  source = "../modules/network"
+resource "aws_vpc" "this" {
+  cidr_block           = var.vpc_cidr
+  enable_dns_support   = true
+  enable_dns_hostnames = true
 
-  name_prefix = "${var.project_name}-${var.environment}"
-  vpc_cidr    = var.vpc_cidr
+  tags = {
+    Name = "${var.project_name}-${var.environment}-vpc"
+  }
 }
 
 module "whatsapp_webhook" {
