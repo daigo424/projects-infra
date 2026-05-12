@@ -84,6 +84,9 @@ jobs:
           echo "additional_github_repos  = [\"${TERRAFORM_REPO}\"]" \
             >> "projects/${NAME}/account-bootstrap/terraform.auto.tfvars"
 
+          # Remove envs/ — Terraform is managed in the external repo
+          rm -rf "projects/${NAME}/envs"
+
       - name: Configure Git
         run: |
           git config user.name "github-actions[bot]"
