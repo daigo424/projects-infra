@@ -15,9 +15,13 @@ on:
         description: "AWS account email for test (required when environments = prod,test)"
         required: false
         type: string
-      vpc_cidr:
-        description: VPC CIDR block (e.g. 10.1.0.0/16)"
+      prod_cidr:
+        description: "VPC CIDR block for prod (e.g. 10.1.0.0/16)"
         required: true
+        type: string
+      test_cidr:
+        description: "VPC CIDR block for test (required when environments = prod,test)"
+        required: false
         type: string
       environments:
         description: "Environments to create"
@@ -53,9 +57,10 @@ jobs:
         run: |
           python .github/scripts/new_project.py \
             "${{ github.event.inputs.project_name }}" \
-            "${{ github.event.inputs.vpc_cidr }}" \
             "${{ github.event.inputs.environments }}" \
+            "${{ github.event.inputs.prod_cidr }}" \
             "${{ github.event.inputs.prod_email }}" \
+            "${{ github.event.inputs.test_cidr }}" \
             "${{ github.event.inputs.test_email }}"
 
       - name: Configure for external repo

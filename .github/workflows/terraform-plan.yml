@@ -137,4 +137,5 @@ jobs:
         working-directory: ${{ matrix.target.path }}
         env:
           TF_VAR_environment: ${{ matrix.target.environment }}
+          TF_VAR_vpc_cidr: ${{ matrix.target.vpc_cidr }}
         run: terraform plan -input=false -no-color
