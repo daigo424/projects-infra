@@ -16,7 +16,7 @@
     "test": {
       "account_id": "648664873464",
       "account_email": "aws-project-a-test@example.com",
-      "vpc_cidr": "10.23.0.0/16",
+      "vpc_cidr": "10.20.0.0/16",
       "enabled_for_access": true,
       "deploy_role_ready": true
     }

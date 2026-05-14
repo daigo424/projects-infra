@@ -23,16 +23,15 @@ def parse_args() -> tuple[str, list[str], dict[str, str], dict[str, str]]:
     if len(sys.argv) < 5:
         fail(
             "usage: new_project.py <project-name> <environments> <prod-cidr> <prod-email>"
-            " [<test-cidr> <test-email>]",
+            " [<test-email>]",
             exit_code=2,
         )
 
     project_name = sys.argv[1].strip()
     environments = [e.strip() for e in sys.argv[2].split(",")]
-    prod_cidr    = sys.argv[3].strip()
+    cidr    = sys.argv[3].strip()
     prod_email   = sys.argv[4].strip()
-    test_cidr    = sys.argv[5].strip() if len(sys.argv) > 5 else ""
-    test_email   = sys.argv[6].strip() if len(sys.argv) > 6 else ""
+    test_email   = sys.argv[5].strip() if len(sys.argv) > 5 else ""
 
     if not project_name:
         fail("project-name must not be empty")
@@ -42,15 +41,13 @@ def parse_args() -> tuple[str, list[str], dict[str, str], dict[str, str]]:
         if env not in valid_envs:
             fail(f"unknown environment '{env}'. Must be one of: {', '.join(sorted(valid_envs))}")
 
-    env_cidrs: dict[str, str] = {"prod": prod_cidr}
+    env_cidrs: dict[str, str] = {"prod": cidr}
     env_emails: dict[str, str] = {"prod": prod_email}
 
     if "test" in environments:
-        if not test_cidr:
-            fail("test-cidr is required when environments includes 'test'")
         if not test_email:
             fail("test-email is required when environments includes 'test'")
-        env_cidrs["test"] = test_cidr
+        env_cidrs["test"] = cidr
         env_emails["test"] = test_email
 
     for env, email in env_emails.items():
