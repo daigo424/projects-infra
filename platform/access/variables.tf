@@ -6,10 +6,7 @@ variable "identity_center_instance_arn" {
   type = string
 }
 
-variable "principal_group_id" {
-  type = string
-}
-
-variable "permission_set_name" {
-  type = string
+variable "identity_store_id" {
+  type        = string
+  description = "IAM Identity Center の Identity Store ID (例: d-1234567890). コンソール > IAM Identity Center > Settings で確認できる"
 }

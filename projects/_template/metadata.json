@@ -5,6 +5,15 @@
   "role_name": "GitHubActionsProjectDeployRole",
   "account_bootstrap_path": "projects/__PROJECT_NAME__/account-bootstrap",
   "envs_path": "projects/__PROJECT_NAME__/envs",
+  "members": [
+    {
+      "email": "member@example.com",
+      "permissions": {
+        "prod": "ReadOnlyAccess",
+        "test": "AdministratorAccess"
+      }
+    }
+  ],
   "environments": {
     "prod": {
       "account_id": "",

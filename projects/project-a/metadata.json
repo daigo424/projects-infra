@@ -5,6 +5,15 @@
   "role_name": "GitHubActionsProjectDeployRole",
   "account_bootstrap_path": "projects/project-a/account-bootstrap",
   "envs_path": "projects/project-a/envs",
+  "members": [
+    {
+      "email": "ishii.daigo@gmail.com",
+      "permissions": {
+        "prod": "AdministratorAccess",
+        "test": "AdministratorAccess"
+      }
+    }
+  ],
   "environments": {
     "prod": {
       "account_id": "427025827623",
