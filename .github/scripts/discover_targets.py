@@ -6,22 +6,22 @@ repo = Path(__file__).resolve().parents[2]
 
 targets = [
     {
-        "name": "platform-bootstrap",
+        "name": "platform/bootstrap",
         "path": "platform/bootstrap",
         "kind": "platform-bootstrap"
     },
     {
-        "name": "platform-identity",
+        "name": "platform/identity",
         "path": "platform/identity",
         "kind": "platform"
     },
     {
-        "name": "platform-accounts",
+        "name": "platform/accounts",
         "path": "platform/accounts",
         "kind": "platform"
     },
     {
-        "name": "platform-access",
+        "name": "platform/access",
         "path": "platform/access",
         "kind": "platform"
     },
@@ -36,7 +36,7 @@ for metadata_file in sorted(projects_dir.glob("*/metadata.json")):
 
     for env_name, env_cfg in metadata.get("environments", {}).items():
         targets.append({
-            "name": f"{project_name}-{env_name}-account-bootstrap",
+            "name": f"projects/{project_name}/bootstrap:{env_name}",
             "path": metadata["account_bootstrap_path"],
             "kind": "project-bootstrap",
             "project_name": project_name,
@@ -46,7 +46,7 @@ for metadata_file in sorted(projects_dir.glob("*/metadata.json")):
         })
         if not metadata.get("terraform_repo"):
             targets.append({
-                "name": f"{project_name}-{env_name}",
+                "name": f"projects/{project_name}/envs:{env_name}",
                 "path": metadata["envs_path"],
                 "kind": "project",
                 "project_name": project_name,
