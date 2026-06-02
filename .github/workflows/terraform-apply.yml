@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       target_name:
-        description: "Terraform target name (例: platform/access, projects/project-a/envs:prod, projects/project-a/bootstrap:prod)"
+        description: "Terraform target name (例: platform/access, workloads/project-a/envs:prod, workloads/project-a/bootstrap:prod)"
         required: true
         type: string
 
@@ -58,7 +58,7 @@ jobs:
 
       - name: Chain to OrganizationAccountAccessRole
         if: >-
-          fromJson(steps.select.outputs.target).kind == 'project-bootstrap' &&
+          fromJson(steps.select.outputs.target).kind == 'workload-bootstrap' &&
           !fromJson(steps.select.outputs.target).deploy_role_ready
         uses: aws-actions/configure-aws-credentials@v4
         with:
@@ -72,12 +72,12 @@ jobs:
         id: backend
         run: |
           KIND="$(echo '${{ steps.select.outputs.target }}' | jq -r '.kind')"
-          PROJECT="$(echo '${{ steps.select.outputs.target }}' | jq -r '.project_name // ""')"
+          NAME="$(echo '${{ steps.select.outputs.target }}' | jq -r '.workload_name // ""')"
           ENV="$(echo '${{ steps.select.outputs.target }}' | jq -r '.environment // ""')"
-          if [ "$KIND" = "project-bootstrap" ]; then
-            echo "key=projects/${PROJECT}/${ENV}/account-bootstrap/terraform.tfstate" >> "$GITHUB_OUTPUT"
-          elif [ "$KIND" = "project" ]; then
-            echo "key=projects/${PROJECT}/${ENV}/terraform.tfstate" >> "$GITHUB_OUTPUT"
+          if [ "$KIND" = "workload-bootstrap" ]; then
+            echo "key=workloads/${NAME}/${ENV}/account-bootstrap/terraform.tfstate" >> "$GITHUB_OUTPUT"
+          elif [ "$KIND" = "workload" ]; then
+            echo "key=workloads/${NAME}/${ENV}/terraform.tfstate" >> "$GITHUB_OUTPUT"
           else
             echo "key=" >> "$GITHUB_OUTPUT"
           fi
@@ -97,4 +97,5 @@ jobs:
         env:
           TF_VAR_environment: ${{ fromJson(steps.select.outputs.target).environment }}
           TF_VAR_vpc_cidr: ${{ fromJson(steps.select.outputs.target).vpc_cidr }}
+          TF_VAR_workload_name: ${{ fromJson(steps.select.outputs.target).workload_name }}
         run: terraform apply -input=false -auto-approve

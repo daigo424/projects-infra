@@ -1,23 +1,23 @@
 locals {
-  metadata_files = fileset("${path.root}/../../projects", "*/metadata.json")
+  metadata_files = fileset("${path.root}/../../workloads", "*/metadata.json")
 
-  raw_project_configs = [
+  raw_workload_configs = [
     for rel in local.metadata_files :
-    jsondecode(file("${path.root}/../../projects/${rel}"))
+    jsondecode(file("${path.root}/../../workloads/${rel}"))
     if !startswith(rel, "_template/")
   ]
 
   env_configs = {
     for pair in flatten([
-      for config in local.raw_project_configs : [
+      for config in local.raw_workload_configs : [
         for env_name, env_config in config.environments : {
-          key               = "${config.project_name}-${env_name}"
-          project_name      = config.project_name
+          key               = "${config.workload_name}-${env_name}"
+          workload_name     = config.workload_name
           env_name          = env_name
           account_id        = try(env_config.account_id, "")
           role_name         = config.role_name
           deploy_role_ready = try(env_config.deploy_role_ready, false)
-          state_prefix      = "projects/${config.project_name}/${env_name}"
+          state_prefix      = "workloads/${config.workload_name}/${env_name}"
         }
       ]
     ]) : pair.key => pair

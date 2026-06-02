@@ -1,9 +1,9 @@
 locals {
-  metadata_files = fileset("${path.root}/../../projects", "*/metadata.json")
+  metadata_files = fileset("${path.root}/../../workloads", "*/metadata.json")
 
-  raw_project_configs = [
+  raw_workload_configs = [
     for rel in local.metadata_files :
-    jsondecode(file("${path.root}/../../projects/${rel}"))
+    jsondecode(file("${path.root}/../../workloads/${rel}"))
     if !startswith(rel, "_template/")
   ]
 
@@ -11,13 +11,13 @@ locals {
   platform_users = jsondecode(file("${path.root}/../users.json"))
   users_by_email = { for u in local.platform_users : u.email => u }
 
-  # 全 project × env × member の組み合わせ展開
+  # 全 workload × env × member の組み合わせ展開
   member_assignments = {
     for pair in flatten([
-      for config in local.raw_project_configs : [
+      for config in local.raw_workload_configs : [
         for env_name, env_config in config.environments : [
           for member in try(config.members, []) : {
-            key        = "${config.project_name}-${env_name}-${member.email}"
+            key        = "${config.workload_name}-${env_name}-${member.email}"
             account_id = env_config.account_id
             email      = member.email
             permission = try(member.permissions[env_name], null)

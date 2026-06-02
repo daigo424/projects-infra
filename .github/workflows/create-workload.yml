@@ -1,0 +1,89 @@
+name: create-workload
+
+on:
+  workflow_dispatch:
+    inputs:
+      workload_name:
+        description: "Workload name (e.g. my-service)"
+        required: true
+        type: string
+      prod_email:
+        description: "AWS account email for prod (e.g. me+myservice-prod@example.com)"
+        required: true
+        type: string
+      test_email:
+        description: "AWS account email for test (required when environments = prod,test)"
+        required: false
+        type: string
+      cidr_tier:
+        description: "Tier for VPC CIDR allocation (C = normal service, D = microservice)"
+        required: true
+        type: choice
+        default: C
+        options:
+          - C
+          - D
+      environments:
+        description: "Environments to create"
+        required: true
+        type: choice
+        default: prod
+        options:
+          - prod
+          - prod,test
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  create:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: pip install filelock
+
+      - name: Scaffold workload
+        run: |
+          python .github/scripts/new_workload.py \
+            "${{ github.event.inputs.workload_name }}" \
+            "${{ github.event.inputs.environments }}" \
+            "${{ github.event.inputs.cidr_tier }}" \
+            "${{ github.event.inputs.prod_email }}" \
+            "${{ github.event.inputs.test_email }}"
+
+      - name: Configure Git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Create branch and PR
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          NAME="${{ github.event.inputs.workload_name }}"
+          ENVS="${{ github.event.inputs.environments }}"
+          BRANCH="add-workload/${NAME}"
+
+          git checkout -b "$BRANCH"
+          git add "workloads/${NAME}/" ".repo-meta/"
+          git commit -m "feat: add workload ${NAME}"
+          git push --force origin "$BRANCH"
+
+          gh pr list --head "$BRANCH" --json number --jq '.[0].number' | grep -q . || \
+          gh pr create \
+            --title "[1/3] feat: add workload ${NAME}" \
+            --body "$(cat <<EOF
+          ## Add workload: \`${NAME}\`
+
+          - **Environments:** \`${ENVS}\`
+
+          Merging this PR will automatically trigger AWS account creation and kick off the provisioning sequence. Two more PRs will follow — merge them in order as each appears.
+          EOF
+          )"

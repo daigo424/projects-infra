@@ -27,29 +27,29 @@ targets = [
     },
 ]
 
-projects_dir = repo / "projects"
-for metadata_file in sorted(projects_dir.glob("*/metadata.json")):
-    if metadata_file.parent.name == "_template":
+workloads_dir = repo / "workloads"
+for metadata_file in sorted(workloads_dir.glob("*/metadata.json")):
+    if metadata_file.parent.name.startswith("_"):
         continue
     metadata = json.loads(metadata_file.read_text(encoding="utf-8"))
-    project_name = metadata["project_name"]
+    workload_name = metadata["workload_name"]
 
     for env_name, env_cfg in metadata.get("environments", {}).items():
         targets.append({
-            "name": f"projects/{project_name}/bootstrap:{env_name}",
+            "name": f"workloads/{workload_name}/bootstrap:{env_name}",
             "path": metadata["account_bootstrap_path"],
-            "kind": "project-bootstrap",
-            "project_name": project_name,
+            "kind": "workload-bootstrap",
+            "workload_name": workload_name,
             "environment": env_name,
             "account_id": env_cfg.get("account_id", ""),
             "deploy_role_ready": env_cfg.get("deploy_role_ready", False),
         })
         if not metadata.get("terraform_repo"):
             targets.append({
-                "name": f"projects/{project_name}/envs:{env_name}",
+                "name": f"workloads/{workload_name}/envs:{env_name}",
                 "path": metadata["envs_path"],
-                "kind": "project",
-                "project_name": project_name,
+                "kind": "workload",
+                "workload_name": workload_name,
                 "environment": env_name,
                 "vpc_cidr": metadata.get("vpc_cidr", ""),
             })

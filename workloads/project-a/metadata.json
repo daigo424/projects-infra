@@ -1,0 +1,33 @@
+{
+  "workload_name": "project-a",
+  "display_name": "project-a",
+  "region": "ap-northeast-1",
+  "role_name": "GitHubActionsWorkloadDeployRole",
+  "account_bootstrap_path": "workloads/project-a/account-bootstrap",
+  "envs_path": "workloads/project-a/envs",
+  "cidr_tier": "C",
+  "vpc_cidr": "10.64.0.0/20",
+  "members": [
+    {
+      "email": "ishii.daigo@gmail.com",
+      "permissions": {
+        "prod": "AdministratorAccess",
+        "test": "AdministratorAccess"
+      }
+    }
+  ],
+  "environments": {
+    "prod": {
+      "account_id": "427025827623",
+      "account_email": "aws-project-a@example.com",
+      "enabled_for_access": true,
+      "deploy_role_ready": true
+    },
+    "test": {
+      "account_id": "648664873464",
+      "account_email": "aws-project-a-test@example.com",
+      "enabled_for_access": true,
+      "deploy_role_ready": true
+    }
+  }
+}
