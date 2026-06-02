@@ -5,6 +5,8 @@
   "role_name": "GitHubActionsProjectDeployRole",
   "account_bootstrap_path": "projects/weather-forecast-ai/account-bootstrap",
   "envs_path": "projects/weather-forecast-ai/envs",
+  "cidr_tier": "C",
+  "vpc_cidr": "10.64.32.0/20",
   "members": [
     {
       "email": "ishii.daigo@gmail.com",
@@ -18,14 +20,12 @@
     "prod": {
       "account_id": "916868259190",
       "account_email": "ishii.daigo+weather-forecast-ai-prod@gmail.com",
-      "vpc_cidr": "10.22.0.0/16",
       "enabled_for_access": true,
       "deploy_role_ready": true
     },
     "test": {
       "account_id": "897913033200",
       "account_email": "ishii.daigo+weather-forecast-ai-test@gmail.com",
-      "vpc_cidr": "10.22.0.0/16",
       "enabled_for_access": true,
       "deploy_role_ready": true
     }

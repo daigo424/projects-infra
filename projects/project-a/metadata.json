@@ -5,6 +5,8 @@
   "role_name": "GitHubActionsProjectDeployRole",
   "account_bootstrap_path": "projects/project-a/account-bootstrap",
   "envs_path": "projects/project-a/envs",
+  "cidr_tier": "C",
+  "vpc_cidr": "10.64.0.0/20",
   "members": [
     {
       "email": "ishii.daigo@gmail.com",
@@ -18,14 +20,12 @@
     "prod": {
       "account_id": "427025827623",
       "account_email": "aws-project-a@example.com",
-      "vpc_cidr": "10.20.0.0/16",
       "enabled_for_access": true,
       "deploy_role_ready": true
     },
     "test": {
       "account_id": "648664873464",
       "account_email": "aws-project-a-test@example.com",
-      "vpc_cidr": "10.20.0.0/16",
       "enabled_for_access": true,
       "deploy_role_ready": true
     }
