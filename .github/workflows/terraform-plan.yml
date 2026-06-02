@@ -4,7 +4,7 @@ on:
   pull_request:
     paths:
       - "platform/**"
-      - "projects/**"
+      - "workloads/**"
       - ".github/workflows/**"
       - ".github/scripts/**"
   workflow_dispatch:
@@ -85,7 +85,7 @@ jobs:
       - name: Chain to OrganizationAccountAccessRole
         if: >-
           steps.match.outputs.skip != 'true' &&
-          matrix.target.kind == 'project-bootstrap' &&
+          matrix.target.kind == 'workload-bootstrap' &&
           matrix.target.deploy_role_ready == false
         uses: aws-actions/configure-aws-credentials@v4
         with:
@@ -101,12 +101,12 @@ jobs:
         id: backend
         run: |
           KIND="${{ matrix.target.kind }}"
-          PROJECT="${{ matrix.target.project_name }}"
+          NAME="${{ matrix.target.workload_name }}"
           ENV="${{ matrix.target.environment }}"
-          if [ "$KIND" = "project-bootstrap" ]; then
-            echo "key=projects/${PROJECT}/${ENV}/account-bootstrap/terraform.tfstate" >> "$GITHUB_OUTPUT"
-          elif [ "$KIND" = "project" ]; then
-            echo "key=projects/${PROJECT}/${ENV}/terraform.tfstate" >> "$GITHUB_OUTPUT"
+          if [ "$KIND" = "workload-bootstrap" ]; then
+            echo "key=workloads/${NAME}/${ENV}/account-bootstrap/terraform.tfstate" >> "$GITHUB_OUTPUT"
+          elif [ "$KIND" = "workload" ]; then
+            echo "key=workloads/${NAME}/${ENV}/terraform.tfstate" >> "$GITHUB_OUTPUT"
           else
             echo "key=" >> "$GITHUB_OUTPUT"
           fi
@@ -138,4 +138,5 @@ jobs:
         env:
           TF_VAR_environment: ${{ matrix.target.environment }}
           TF_VAR_vpc_cidr: ${{ matrix.target.vpc_cidr }}
+          TF_VAR_workload_name: ${{ matrix.target.workload_name }}
         run: terraform plan -input=false -no-color

@@ -1,0 +1,265 @@
+name: workload-provision
+
+on:
+  pull_request:
+    types: [closed]
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      workload_name:
+        description: "Workload name (e.g. weather-forecast-ai)"
+        required: true
+        type: string
+      phase:
+        description: "Phase to run (2, 3, or 4)"
+        required: true
+        type: choice
+        options:
+          - "2"
+          - "3"
+          - "4"
+
+permissions:
+  id-token: write
+  contents: write
+  pull-requests: write
+
+jobs:
+  provision:
+    if: >-
+      (github.event_name == 'workflow_dispatch') ||
+      (github.event.pull_request.merged == true &&
+       (startsWith(github.event.pull_request.head.ref, 'add-workload/') ||
+        startsWith(github.event.pull_request.head.ref, 'provision/')))
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Detect phase and workload name
+        id: detect
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            NAME="${{ github.event.inputs.workload_name }}"
+            PHASE="${{ github.event.inputs.phase }}"
+          else
+            BRANCH="${{ github.event.pull_request.head.ref }}"
+            if [[ "$BRANCH" == add-workload/* ]]; then
+              NAME="${BRANCH#add-workload/}"
+              PHASE=2
+            elif [[ "$BRANCH" == provision/*/accounts ]]; then
+              NAME="${BRANCH#provision/}"
+              NAME="${NAME%/accounts}"
+              PHASE=3
+            elif [[ "$BRANCH" == provision/*/deploy-role ]]; then
+              NAME="${BRANCH#provision/}"
+              NAME="${NAME%/deploy-role}"
+              PHASE=4
+            else
+              echo "Unknown branch pattern: $BRANCH" >&2
+              exit 1
+            fi
+          fi
+          echo "name=$NAME" >> "$GITHUB_OUTPUT"
+          echo "phase=$PHASE" >> "$GITHUB_OUTPUT"
+
+      - name: Read platform role ARN
+        id: platform
+        run: |
+          MGMT=$(jq -r '.management_account_id' platform/metadata.json)
+          ROLE=$(jq -r '.platform_role_name' platform/metadata.json)
+          echo "role_arn=arn:aws:iam::${MGMT}:role/${ROLE}" >> "$GITHUB_OUTPUT"
+
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ steps.platform.outputs.role_arn }}
+          aws-region: ap-northeast-1
+
+      - uses: hashicorp/setup-terraform@v3
+
+      - name: Configure git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      # ── Phase 2: Apply platform-accounts, capture account IDs ──────────────
+
+      - name: Phase 2 — Apply platform-accounts
+        if: steps.detect.outputs.phase == '2'
+        id: phase2
+        env:
+          NAME: ${{ steps.detect.outputs.name }}
+        run: |
+          terraform -chdir=platform/accounts init -backend-config=backend.hcl
+          terraform -chdir=platform/accounts apply -auto-approve -input=false
+
+          OUTPUT=$(terraform -chdir=platform/accounts output -json)
+
+          PROD_ID=$(echo "$OUTPUT" | jq -r ".workload_account_ids.value[\"${NAME}-prod\"]")
+          if [ "$PROD_ID" = "null" ] || [ -z "$PROD_ID" ]; then
+            echo "ERROR: account ID not found for ${NAME}-prod" >&2
+            exit 1
+          fi
+          echo "prod_id=$PROD_ID" >> "$GITHUB_OUTPUT"
+
+          if jq -e '.environments | has("test")' "workloads/${NAME}/metadata.json" > /dev/null; then
+            TEST_ID=$(echo "$OUTPUT" | jq -r ".workload_account_ids.value[\"${NAME}-test\"]")
+            if [ "$TEST_ID" = "null" ] || [ -z "$TEST_ID" ]; then
+              echo "ERROR: account ID not found for ${NAME}-test" >&2
+              exit 1
+            fi
+            echo "test_id=$TEST_ID" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Phase 2 — Update metadata.json with account IDs
+        if: steps.detect.outputs.phase == '2'
+        env:
+          NAME: ${{ steps.detect.outputs.name }}
+          PROD_ID: ${{ steps.phase2.outputs.prod_id }}
+          TEST_ID: ${{ steps.phase2.outputs.test_id }}
+        run: |
+          python - <<'PYEOF'
+          import json, os
+          name = os.environ["NAME"]
+          path = f"workloads/{name}/metadata.json"
+          with open(path) as f:
+              meta = json.load(f)
+          meta["environments"]["prod"]["account_id"] = os.environ["PROD_ID"]
+          test_id = os.environ.get("TEST_ID", "")
+          if "test" in meta["environments"] and test_id:
+              meta["environments"]["test"]["account_id"] = test_id
+          with open(path, "w") as f:
+              json.dump(meta, f, indent=2)
+              f.write("\n")
+          PYEOF
+
+          BRANCH="provision/${NAME}/accounts"
+          git checkout -b "$BRANCH"
+          git add "workloads/${NAME}/metadata.json"
+          git commit -m "chore: set account IDs for ${NAME}"
+          git push --force origin "$BRANCH"
+
+      - name: Phase 2 — Create PR [2/3]
+        if: steps.detect.outputs.phase == '2'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          NAME: ${{ steps.detect.outputs.name }}
+        run: |
+          gh pr list --head "provision/${NAME}/accounts" --json number --jq '.[0].number' | grep -q . || \
+          gh pr create \
+            --head "provision/${NAME}/accounts" \
+            --base main \
+            --title "[2/3] feat: add workload ${NAME} — set account IDs" \
+            --body "$(cat <<EOF
+          Account IDs for **\`${NAME}\`** have been captured from \`platform-accounts\` output and recorded in \`metadata.json\`.
+
+          Merging this PR will automatically trigger:
+          - \`platform-bootstrap\` apply
+          - \`platform-access\` apply
+          - \`${NAME}-<env>-account-bootstrap\` apply for each environment
+          EOF
+          )"
+
+      # ── Phase 3: Apply bootstrap/access/account-bootstrap ──────────────────
+
+      - name: Phase 3 — Apply platform-bootstrap
+        if: steps.detect.outputs.phase == '3'
+        run: |
+          terraform -chdir=platform/bootstrap init -backend-config=backend.hcl
+          terraform -chdir=platform/bootstrap apply -auto-approve -input=false
+
+      - name: Phase 3 — Apply platform-access
+        if: steps.detect.outputs.phase == '3'
+        run: |
+          terraform -chdir=platform/access init -backend-config=backend.hcl
+          terraform -chdir=platform/access apply -auto-approve -input=false
+
+      - name: Phase 3 — Apply account-bootstrap for each environment
+        if: steps.detect.outputs.phase == '3'
+        env:
+          NAME: ${{ steps.detect.outputs.name }}
+        run: |
+          META="workloads/${NAME}/metadata.json"
+          BOOTSTRAP_PATH=$(jq -r '.account_bootstrap_path' "$META")
+
+          PLATFORM_KEY_ID="$AWS_ACCESS_KEY_ID"
+          PLATFORM_SECRET_KEY="$AWS_SECRET_ACCESS_KEY"
+          PLATFORM_SESSION_TOKEN="$AWS_SESSION_TOKEN"
+
+          for ENV in $(jq -r '.environments | keys[]' "$META"); do
+            ACCOUNT_ID=$(jq -r ".environments[\"${ENV}\"].account_id" "$META")
+
+            CREDS=$(AWS_ACCESS_KEY_ID="$PLATFORM_KEY_ID" \
+                    AWS_SECRET_ACCESS_KEY="$PLATFORM_SECRET_KEY" \
+                    AWS_SESSION_TOKEN="$PLATFORM_SESSION_TOKEN" \
+                    aws sts assume-role \
+                      --role-arn "arn:aws:iam::${ACCOUNT_ID}:role/OrganizationAccountAccessRole" \
+                      --role-session-name "provision-${NAME}-${ENV}" \
+                      --query Credentials --output json)
+
+            export AWS_ACCESS_KEY_ID=$(echo "$CREDS" | jq -r .AccessKeyId)
+            export AWS_SECRET_ACCESS_KEY=$(echo "$CREDS" | jq -r .SecretAccessKey)
+            export AWS_SESSION_TOKEN=$(echo "$CREDS" | jq -r .SessionToken)
+
+            STATE_KEY="workloads/${NAME}/${ENV}/account-bootstrap/terraform.tfstate"
+            terraform -chdir="$BOOTSTRAP_PATH" init \
+              -backend-config=backend.hcl \
+              -backend-config="key=${STATE_KEY}" \
+              -reconfigure
+            TF_VAR_environment="$ENV" terraform -chdir="$BOOTSTRAP_PATH" apply \
+              -auto-approve -input=false
+
+            export AWS_ACCESS_KEY_ID="$PLATFORM_KEY_ID"
+            export AWS_SECRET_ACCESS_KEY="$PLATFORM_SECRET_KEY"
+            export AWS_SESSION_TOKEN="$PLATFORM_SESSION_TOKEN"
+          done
+
+      - name: Phase 3 — Update deploy_role_ready in metadata.json
+        if: steps.detect.outputs.phase == '3'
+        env:
+          NAME: ${{ steps.detect.outputs.name }}
+        run: |
+          python - <<'PYEOF'
+          import json, os
+          name = os.environ["NAME"]
+          path = f"workloads/{name}/metadata.json"
+          with open(path) as f:
+              meta = json.load(f)
+          for env_cfg in meta["environments"].values():
+              env_cfg["deploy_role_ready"] = True
+          with open(path, "w") as f:
+              json.dump(meta, f, indent=2)
+              f.write("\n")
+          PYEOF
+
+          BRANCH="provision/${NAME}/deploy-role"
+          git checkout -b "$BRANCH"
+          git add "workloads/${NAME}/metadata.json"
+          git commit -m "chore: mark deploy role ready for ${NAME}"
+          git push --force origin "$BRANCH"
+
+      - name: Phase 3 — Create PR [3/3]
+        if: steps.detect.outputs.phase == '3'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          NAME: ${{ steps.detect.outputs.name }}
+        run: |
+          gh pr list --head "provision/${NAME}/deploy-role" --json number --jq '.[0].number' | grep -q . || \
+          gh pr create \
+            --head "provision/${NAME}/deploy-role" \
+            --base main \
+            --title "[3/3] feat: add workload ${NAME} — mark deploy role ready" \
+            --body "$(cat <<EOF
+          \`deploy_role_ready: true\` has been set in \`metadata.json\` for all environments of **\`${NAME}\`**.
+
+          Merging this PR will automatically trigger:
+          - \`platform-bootstrap\` apply (adds S3 bucket policy for \`GitHubActionsWorkloadDeployRole\`)
+          EOF
+          )"
+
+      # ── Phase 4: Final platform-bootstrap ──────────────────────────────────
+
+      - name: Phase 4 — Final platform-bootstrap apply
+        if: steps.detect.outputs.phase == '4'
+        run: |
+          terraform -chdir=platform/bootstrap init -backend-config=backend.hcl
+          terraform -chdir=platform/bootstrap apply -auto-approve -input=false

@@ -2,7 +2,7 @@
 """VPC CIDR allocation tool.
 
 Allocates CIDRs sequentially from tier-specific parent blocks.
-One CIDR per project — shared across all environments (prod, test, etc.)
+One CIDR per workload — shared across all environments (prod, test, etc.)
 
 Tiers:
   A  10.0.0.0/11   → /16 per VPC  (max 32,   common infra)
@@ -12,8 +12,8 @@ Tiers:
 
 Usage:
   python scripts/allocate_cidr.py list
-  python scripts/allocate_cidr.py allocate --project <name> [--tier C]
-  python scripts/allocate_cidr.py allocate --project <name> [--tier C] --dry-run
+  python scripts/allocate_cidr.py allocate --workload <name> [--tier C]
+  python scripts/allocate_cidr.py allocate --workload <name> [--tier C] --dry-run
   python scripts/allocate_cidr.py sync-csv
 """
 
@@ -26,7 +26,7 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).parent.parent
 CSV_PATH = REPO_ROOT / ".repo-meta" / "used_vpc_cidrs.csv"
-CSV_FIELDS = ["vpc_cidr", "tier", "project_name", "prod_account_email", "test_account_email"]
+CSV_FIELDS = ["vpc_cidr", "tier", "workload_name", "prod_account_email", "test_account_email"]
 
 TIERS: dict[str, dict] = {
     "A": {"parent": "10.0.0.0/11",   "prefix": 16},
@@ -72,7 +72,7 @@ def tier_and_index_for_cidr(cidr: str) -> tuple[str, int] | None:
 
 def load_all_metadata() -> list[tuple[Path, dict]]:
     results = []
-    for path in sorted((REPO_ROOT / "projects").glob("*/metadata.json")):
+    for path in sorted((REPO_ROOT / "workloads").glob("*/metadata.json")):
         if path.parent.name.startswith("_"):
             continue
         with open(path, encoding="utf-8") as f:
@@ -115,7 +115,7 @@ def build_csv_rows() -> list[dict]:
         rows.append({
             "vpc_cidr": cidr,
             "tier": tier_s,
-            "project_name": meta["project_name"],
+            "workload_name": meta["workload_name"],
             "prod_account_email": envs.get("prod", {}).get("account_email", ""),
             "test_account_email": envs.get("test", {}).get("account_email", ""),
         })
@@ -154,7 +154,7 @@ def cmd_sync_csv(_args) -> None:
 
 
 def cmd_allocate(args) -> None:
-    metadata_path = REPO_ROOT / "projects" / args.project / "metadata.json"
+    metadata_path = REPO_ROOT / "workloads" / args.workload / "metadata.json"
     if not metadata_path.exists():
         sys.exit(f"Error: {metadata_path} not found")
 
@@ -164,7 +164,7 @@ def cmd_allocate(args) -> None:
     existing_cidr = meta.get("vpc_cidr")
 
     if existing_cidr and not args.force:
-        print(f"'{args.project}' already has vpc_cidr={existing_cidr}")
+        print(f"'{args.workload}' already has vpc_cidr={existing_cidr}")
         answer = input("Overwrite? [y/N] ").strip().lower()
         if answer != "y":
             sys.exit("Aborted.")
@@ -181,7 +181,7 @@ def cmd_allocate(args) -> None:
     idx = next_free_index(args.tier, used)
     cidr = cidr_for_index(args.tier, idx)
 
-    print(f"Tier {args.tier}, index {idx} → {cidr}  ({args.project})")
+    print(f"Tier {args.tier}, index {idx} → {cidr}  ({args.workload})")
 
     if args.dry_run:
         print("[dry-run] No files written.")
@@ -207,8 +207,8 @@ def main() -> None:
     sub.add_parser("list", help="Show all current CIDR allocations")
     sub.add_parser("sync-csv", help="Regenerate .repo-meta/used_vpc_cidrs.csv from metadata.json files")
 
-    alloc = sub.add_parser("allocate", help="Allocate next CIDR for a project")
-    alloc.add_argument("--project", required=True, help="Project name (directory under projects/)")
+    alloc = sub.add_parser("allocate", help="Allocate next CIDR for a workload")
+    alloc.add_argument("--workload", required=True, help="Workload name (directory under workloads/)")
     alloc.add_argument("--tier", default=DEFAULT_TIER, choices=list(TIERS), help="Tier (default: C)")
     alloc.add_argument("--dry-run", action="store_true", help="Print result without writing")
     alloc.add_argument("--force", action="store_true", help="Skip confirmation when overwriting")

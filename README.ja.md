@@ -13,26 +13,26 @@ platform/                     # 管理アカウントのリソース
   modules/github_oidc_role/   # 再利用可能な OIDC ロールモジュール
   metadata.json               # 管理アカウント設定
 
-projects/                     # プロジェクトごとの AWS アカウント
-  _template/                  # 新規プロジェクトのテンプレート（apply 不可）
-  _external_template/         # 外部リポジトリ管理プロジェクト用テンプレート
-  <project-name>/
+workloads/                    # ワークロードごとの AWS アカウント
+  _template/                  # 新規ワークロードのテンプレート（apply 不可）
+  _external_template/         # 外部リポジトリ管理ワークロード用テンプレート
+  <workload-name>/
     account-bootstrap/        # OIDC プロバイダー・デプロイロール作成
     envs/                     # インフラリソース（環境は var.environment で切替）
-    modules/                  # プロジェクト固有モジュール
-    metadata.json             # プロジェクト設定
+    modules/                  # ワークロード固有モジュール
+    metadata.json             # ワークロード設定
 
 .github/
   workflows/
     terraform-plan.yml           # PR 時に変更対象を自動検出して plan
     terraform-apply.yml          # 手動 dispatch で apply
-    create-project.yml           # プロジェクト追加 PR 作成（本リポジトリ管理）
-    create-project-external.yml  # プロジェクト追加 PR 作成（外部リポジトリ管理）
+    create-workload.yml          # ワークロード追加 PR 作成（本リポジトリ管理）
+    create-workload-external.yml # ワークロード追加 PR 作成（外部リポジトリ管理）
   scripts/
-    new_project.py            # テンプレートからプロジェクトディレクトリを生成
-    discover_targets.py       # Terraform ターゲット自動検出
+    new_workload.py          # テンプレートからワークロードディレクトリを生成
+    discover_targets.py      # Terraform ターゲット自動検出
     filter_changed_targets.py # 変更差分によるターゲット絞り込み
-    resolve_role_arn.py       # ターゲットに応じた IAM ロール解決
+    resolve_role_arn.py      # ターゲットに応じた IAM ロール解決
 
 scripts/
   allocate_cidr.py            # VPC CIDR 払い出しツール（Tier別連番割り当て）
@@ -47,11 +47,11 @@ scripts/
 
 ### Plan（PR 時）
 
-`platform/**` または `projects/**` の変更を含む PR を作成すると、変更されたターゲットに対して `terraform plan` が自動実行される。
+`platform/**` または `workloads/**` の変更を含む PR を作成すると、変更されたターゲットに対して `terraform plan` が自動実行される。
 
 ### Apply（手動）
 
-`terraform-apply.yml` を workflow dispatch で実行。`target_name` にターゲット名を指定する（例: `project-a-prod`、`project-a-test-account-bootstrap`）。
+`terraform-apply.yml` を workflow dispatch で実行。`target_name` にターゲット名を指定する（例: `workloads/project-a/envs:prod`、`workloads/project-a/bootstrap:prod`）。
 
 ### 認証（OIDC）
 
@@ -60,9 +60,9 @@ scripts/
 | ターゲット種別 | 使用ロール |
 |---|---|
 | `platform`, `platform-bootstrap` | 管理アカウントの `GitHubActionsPlatformRole` |
-| `project-bootstrap`（deploy_role_ready=false） | ① `GitHubActionsPlatformRole` → ② `OrganizationAccountAccessRole`（プロジェクトアカウント）へ chain |
-| `project-bootstrap`（deploy_role_ready=true） | プロジェクトアカウントの `GitHubActionsProjectDeployRole` |
-| `project` | プロジェクトアカウントの `GitHubActionsProjectDeployRole` |
+| `workload-bootstrap`（deploy_role_ready=false） | ① `GitHubActionsPlatformRole` → ② `OrganizationAccountAccessRole`（ワークロードアカウント）へ chain |
+| `workload-bootstrap`（deploy_role_ready=true） | ワークロードアカウントの `GitHubActionsWorkloadDeployRole` |
+| `workload` | ワークロードアカウントの `GitHubActionsWorkloadDeployRole` |
 
 ---
 
@@ -82,7 +82,7 @@ scripts/
 }
 ```
 
-外部リポジトリ側のセットアップは `projects/_external_template/` を参照。
+外部リポジトリ側のセットアップは `workloads/_external_template/` を参照。
 
 account-bootstrap の OIDC ロールに外部リポジトリを追加で信頼させるには `terraform.auto.tfvars` に以下を追加して `account-bootstrap` を再 apply する。
 
@@ -92,13 +92,13 @@ additional_github_repos = ["org/external-repo-name"]
 
 ---
 
-## ➕ プロジェクト追加
+## ➕ ワークロード追加
 
-**Actions → Run workflow** から **`create-project`**（外部リポジトリ管理の場合は **`create-project-external`**）を実行する。
+**Actions → Run workflow** から **`create-workload`**（外部リポジトリ管理の場合は **`create-workload-external`**）を実行する。
 
 | 入力 | 説明 |
 |---|---|
-| `project_name` | プロジェクト名（例: `my-project`） |
+| `workload_name` | ワークロード名（例: `my-service`） |
 | `prod_email` | prod 用 AWS アカウントメールアドレス |
 | `test_email` | test 用 AWS アカウントメールアドレス *（environments = `prod,test` のときのみ）* |
 | `cidr_tier` | VPC CIDR 払い出し Tier: `C`（デフォルト・通常サービス）または `D`（マイクロサービス） |
@@ -111,8 +111,8 @@ VPC CIDR は指定した Tier の次の空きスロットから自動で割り�
 
 | Tier | ブロック | VPC サイズ | 最大 VPC 数 | 用途 |
 |---|---|---|---|---|
-| A | `10.0.0.0/11` | `/16` | 32 | 共通インフラ |
-| B | `10.32.0.0/11` | `/18` | 128 | 大規模サービス |
+| A | `10.0.0.0/11` | `/16` | 32 | 共通インフラ（通常は使用しない） |
+| B | `10.32.0.0/11` | `/18` | 128 | 大規模サービス（通常は使用しない） |
 | C *（デフォルト）* | `10.64.0.0/10` | `/20` | 1,024 | 通常サービス |
 | D | `10.128.0.0/10` | `/22` | 4,096 | マイクロサービス・IP消費が少ない場合 |
 | *（予約済み）* | `10.192.0.0/10` | — | — | 将来の拡張用バッファ・割り当て対象外 |
@@ -121,14 +121,14 @@ VPC CIDR は指定した Tier の次の空きスロットから自動で割り�
 
 ```bash
 python scripts/allocate_cidr.py list
-python scripts/allocate_cidr.py allocate --project <name> [--tier D]
+python scripts/allocate_cidr.py allocate --workload <name> [--tier D]
 ```
 
 PR **[1/3]** が作成される。各 PR をマージすると次の terraform apply が自動実行され、次の PR が作成される。3 つの PR を順番にマージするだけでよい:
 
 | PR | 内容 | マージ時に自動 apply |
 |---|---|---|
-| `[1/3]` | プロジェクトのスキャフォールド | `platform-accounts` → account ID を取得 |
+| `[1/3]` | ワークロードのスキャフォールド | `platform-accounts` → account ID を取得 |
 | `[2/3]` | `metadata.json` に `account_id` を記録 | `platform-bootstrap`、`platform-access`、`account-bootstrap` |
 | `[3/3]` | `metadata.json` に `deploy_role_ready: true` を記録 | `platform-bootstrap`（S3 ポリシー最終更新） |
 
@@ -137,7 +137,7 @@ PR **[1/3]** が作成される。各 PR をマージすると次の terraform a
 ## 🗃 S3 ステート管理
 
 - 管理アカウントの S3 バケットに全ステートを集約
-- 環境ごとにプレフィックスで分離: `projects/<project-name>/<env>/*`
+- 環境ごとにプレフィックスで分離: `workloads/<workload-name>/<env>/*`
 - `metadata.json` を元に自動でバケットポリシーを管理
 
 ---

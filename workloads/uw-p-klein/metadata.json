@@ -1,0 +1,26 @@
+{
+  "workload_name": "uw-p-klein",
+  "display_name": "uw-p-klein",
+  "region": "ap-northeast-1",
+  "role_name": "GitHubActionsWorkloadDeployRole",
+  "account_bootstrap_path": "workloads/uw-p-klein/account-bootstrap",
+  "envs_path": "workloads/uw-p-klein/envs",
+  "cidr_tier": "C",
+  "vpc_cidr": "10.64.16.0/20",
+  "members": [
+    {
+      "email": "ishii.daigo@gmail.com",
+      "permissions": {
+        "prod": "AdministratorAccess"
+      }
+    }
+  ],
+  "environments": {
+    "prod": {
+      "account_id": "547703943158",
+      "account_email": "ishii.daigo+aws-uw-p-klein@gmail.com",
+      "enabled_for_access": true,
+      "deploy_role_ready": true
+    }
+  }
+}
