@@ -33,6 +33,12 @@ projects/                     # プロジェクトごとの AWS アカウント
     discover_targets.py       # Terraform ターゲット自動検出
     filter_changed_targets.py # 変更差分によるターゲット絞り込み
     resolve_role_arn.py       # ターゲットに応じた IAM ロール解決
+
+scripts/
+  allocate_cidr.py            # VPC CIDR 払い出しツール（Tier別連番割り当て）
+
+.repo-meta/
+  used_vpc_cidrs.csv          # 割り当て済み VPC CIDR の一覧
 ```
 
 ---
@@ -93,10 +99,30 @@ additional_github_repos = ["org/external-repo-name"]
 | 入力 | 説明 |
 |---|---|
 | `project_name` | プロジェクト名（例: `my-project`） |
-| `account_email` | AWS アカウントのベースメールアドレス |
-| `vpc_cidr` | VPC CIDR ブロック（例: `10.1.0.0/16`） |
+| `prod_email` | prod 用 AWS アカウントメールアドレス |
+| `test_email` | test 用 AWS アカウントメールアドレス *（environments = `prod,test` のときのみ）* |
+| `cidr_tier` | VPC CIDR 払い出し Tier: `C`（デフォルト・通常サービス）または `D`（マイクロサービス） |
 | `environments` | `prod` または `prod,test` |
 | `terraform_repo` | *（外部のみ）* 外部リポジトリ（例: `org/repo-name`） |
+
+VPC CIDR は指定した Tier の次の空きスロットから自動で割り当てられる。割り当て結果は `.repo-meta/used_vpc_cidrs.csv` に記録される。
+
+**Tier 一覧:**
+
+| Tier | ブロック | VPC サイズ | 最大 VPC 数 | 用途 |
+|---|---|---|---|---|
+| A | `10.0.0.0/11` | `/16` | 32 | 共通インフラ |
+| B | `10.32.0.0/11` | `/18` | 128 | 大規模サービス |
+| C *（デフォルト）* | `10.64.0.0/10` | `/20` | 1,024 | 通常サービス |
+| D | `10.128.0.0/10` | `/22` | 4,096 | マイクロサービス・IP消費が少ない場合 |
+| *（予約済み）* | `10.192.0.0/10` | — | — | 将来の拡張用バッファ・割り当て対象外 |
+
+手動での払い出しや現在の割り当て確認:
+
+```bash
+python scripts/allocate_cidr.py list
+python scripts/allocate_cidr.py allocate --project <name> [--tier D]
+```
 
 PR **[1/3]** が作成される。各 PR をマージすると次の terraform apply が自動実行され、次の PR が作成される。3 つの PR を順番にマージするだけでよい:
 

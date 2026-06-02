@@ -5,6 +5,8 @@
   "role_name": "GitHubActionsProjectDeployRole",
   "account_bootstrap_path": "projects/__PROJECT_NAME__/account-bootstrap",
   "envs_path": "projects/__PROJECT_NAME__/envs",
+  "cidr_tier": "C",
+  "vpc_cidr": "",
   "members": [
     {
       "email": "member@example.com",

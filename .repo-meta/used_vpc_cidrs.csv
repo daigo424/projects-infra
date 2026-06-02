@@ -1,6 +1,4 @@
-project_name,account_email,vpc_cidr
-project-a-prod,aws-project-a@example.com,10.20.0.0/16
-project-a-test,aws-project-a-test@example.com,10.20.0.0/16
-uw-p-klein-prod,ishii.daigo+aws-uw-p-klein@gmail.com,10.21.0.0/16
-weather-forecast-ai-prod,ishii.daigo+weather-forecast-ai-prod@gmail.com,10.22.0.0/16
-weather-forecast-ai-test,ishii.daigo+weather-forecast-ai-test@gmail.com,10.22.0.0/16
+vpc_cidr,tier,project_name,prod_account_email,test_account_email
+10.64.0.0/20,C,project-a,aws-project-a@example.com,aws-project-a-test@example.com
+10.64.16.0/20,C,uw-p-klein,ishii.daigo+aws-uw-p-klein@gmail.com,
+10.64.32.0/20,C,weather-forecast-ai,ishii.daigo+weather-forecast-ai-prod@gmail.com,ishii.daigo+weather-forecast-ai-test@gmail.com

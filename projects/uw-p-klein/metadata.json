@@ -5,6 +5,8 @@
   "role_name": "GitHubActionsProjectDeployRole",
   "account_bootstrap_path": "projects/uw-p-klein/account-bootstrap",
   "envs_path": "projects/uw-p-klein/envs",
+  "cidr_tier": "C",
+  "vpc_cidr": "10.64.16.0/20",
   "members": [
     {
       "email": "ishii.daigo@gmail.com",
@@ -17,7 +19,6 @@
     "prod": {
       "account_id": "547703943158",
       "account_email": "ishii.daigo+aws-uw-p-klein@gmail.com",
-      "vpc_cidr": "10.21.0.0/16",
       "enabled_for_access": true,
       "deploy_role_ready": true
     }

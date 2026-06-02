@@ -33,6 +33,12 @@ projects/                     # Per-project AWS accounts
     discover_targets.py       # Terraform target discovery
     filter_changed_targets.py # Filter targets by git diff
     resolve_role_arn.py       # Resolve IAM role for each target
+
+scripts/
+  allocate_cidr.py            # VPC CIDR allocation tool (tier-based sequential assignment)
+
+.repo-meta/
+  used_vpc_cidrs.csv          # Registry of all allocated VPC CIDRs
 ```
 
 ---
@@ -93,10 +99,30 @@ Trigger **`create-project`** (or **`create-project-external`** for external repo
 | Input | Description |
 |---|---|
 | `project_name` | Project name (e.g. `my-project`) |
-| `account_email` | Base AWS account email |
-| `vpc_cidr` | VPC CIDR block (e.g. `10.1.0.0/16`) |
+| `prod_email` | AWS account email for prod |
+| `test_email` | AWS account email for test *(only when environments = `prod,test`)* |
+| `cidr_tier` | Tier for VPC CIDR allocation: `C` (default, normal service) or `D` (microservice) |
 | `environments` | `prod` or `prod,test` |
 | `terraform_repo` | *(external only)* External repo (e.g. `org/repo-name`) |
+
+The VPC CIDR is automatically assigned from the next available slot in the chosen tier. All allocations are recorded in `.repo-meta/used_vpc_cidrs.csv`.
+
+**Tier reference:**
+
+| Tier | Block | VPC size | Max VPCs | Use when |
+|---|---|---|---|---|
+| A | `10.0.0.0/11` | `/16` | 32 | Common infrastructure |
+| B | `10.32.0.0/11` | `/18` | 128 | Large-scale services |
+| C *(default)* | `10.64.0.0/10` | `/20` | 1,024 | Normal service |
+| D | `10.128.0.0/10` | `/22` | 4,096 | Microservice / low IP consumption |
+| *(reserved)* | `10.192.0.0/10` | — | — | Buffer for future use; not allocated |
+
+To allocate a CIDR manually or check current assignments:
+
+```bash
+python scripts/allocate_cidr.py list
+python scripts/allocate_cidr.py allocate --project <name> [--tier D]
+```
 
 This opens PR **[1/3]**. Merging each PR automatically triggers the next terraform applies and creates the following PR. Just merge the three PRs in order:
 
