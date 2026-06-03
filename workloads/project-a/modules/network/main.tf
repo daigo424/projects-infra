@@ -14,6 +14,10 @@ resource "aws_vpc" "this" {
   tags = {
     Name = "${var.name_prefix}-vpc"
   }
+
+  lifecycle {
+    create_before_destroy = true
+  }
 }
 
 resource "aws_subnet" "public" {
