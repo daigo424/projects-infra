@@ -1,0 +1,27 @@
+{
+  "workload_name": "vpn",
+  "display_name": "vpn",
+  "region": "ap-northeast-1",
+  "role_name": "GitHubActionsWorkloadDeployRole",
+  "account_bootstrap_path": "workloads/vpn/account-bootstrap",
+  "envs_path": "workloads/vpn/envs",
+  "cidr_tier": "C",
+  "vpc_cidr": "10.64.48.0/20",
+  "members": [
+    {
+      "email": "member@example.com",
+      "permissions": {
+        "prod": "ReadOnlyAccess",
+        "test": "AdministratorAccess"
+      }
+    }
+  ],
+  "environments": {
+    "prod": {
+      "account_id": "",
+      "account_email": "ishii.daigo+aws-vpn@gmail.com",
+      "enabled_for_access": true,
+      "deploy_role_ready": false
+    }
+  }
+}
