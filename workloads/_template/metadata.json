@@ -7,15 +7,7 @@
   "envs_path": "workloads/__WORKLOAD_NAME__/envs",
   "cidr_tier": "C",
   "vpc_cidr": "",
-  "members": [
-    {
-      "email": "member@example.com",
-      "permissions": {
-        "prod": "ReadOnlyAccess",
-        "test": "AdministratorAccess"
-      }
-    }
-  ],
+  "members": [],
   "environments": {
     "prod": {
       "account_id": "",

@@ -9,10 +9,9 @@
   "vpc_cidr": "10.64.48.0/20",
   "members": [
     {
-      "email": "member@example.com",
+      "email": "ishii.daigo@gmail.com",
       "permissions": {
-        "prod": "ReadOnlyAccess",
-        "test": "AdministratorAccess"
+        "prod": "AdministratorAccess"
       }
     }
   ],

@@ -23,6 +23,10 @@ on:
         options:
           - C
           - D
+      member_email:
+        description: "Email of the IAM Identity Center user to grant AdministratorAccess (leave blank for no members)"
+        required: false
+        type: string
       environments:
         description: "Environments to create"
         required: true
@@ -56,7 +60,8 @@ jobs:
             "${{ github.event.inputs.environments }}" \
             "${{ github.event.inputs.cidr_tier }}" \
             "${{ github.event.inputs.prod_email }}" \
-            "${{ github.event.inputs.test_email }}"
+            "${{ github.event.inputs.test_email }}" \
+            "${{ github.event.inputs.member_email }}"
 
       - name: Configure Git
         run: |
