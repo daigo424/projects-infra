@@ -18,7 +18,7 @@
   ],
   "environments": {
     "prod": {
-      "account_id": "",
+      "account_id": "802437129732",
       "account_email": "ishii.daigo+aws-vpn@gmail.com",
       "enabled_for_access": true,
       "deploy_role_ready": false
