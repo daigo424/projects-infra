@@ -86,11 +86,20 @@ jobs:
       - name: Phase 2 — Apply platform-accounts
         if: steps.detect.outputs.phase == '2'
         id: phase2
+        timeout-minutes: 30
         env:
           NAME: ${{ steps.detect.outputs.name }}
         run: |
           terraform -chdir=platform/accounts init -backend-config=backend.hcl
-          terraform -chdir=platform/accounts apply -auto-approve -input=false
+
+          for attempt in 1 2 3; do
+            terraform -chdir=platform/accounts apply -auto-approve -input=false && break
+            if [ "$attempt" -eq 3 ]; then
+              echo "All attempts failed" >&2; exit 1
+            fi
+            echo "Attempt $attempt failed, retrying in 30s..."
+            sleep 30
+          done
 
           OUTPUT=$(terraform -chdir=platform/accounts output -json)
 
