@@ -17,11 +17,11 @@ def fail(message: str, exit_code: int = 1) -> NoReturn:
     raise SystemExit(exit_code)
 
 
-def parse_args() -> tuple[str, list[str], str, dict[str, str]]:
+def parse_args() -> tuple[str, list[str], str, dict[str, str], str]:
     if len(sys.argv) < 5:
         fail(
             "usage: new_workload.py <workload-name> <environments> <cidr-tier> <prod-email>"
-            " [<test-email>]",
+            " [<test-email>] [<member-email>]",
             exit_code=2,
         )
 
@@ -30,6 +30,7 @@ def parse_args() -> tuple[str, list[str], str, dict[str, str]]:
     cidr_tier     = sys.argv[3].strip().upper()
     prod_email    = sys.argv[4].strip()
     test_email    = sys.argv[5].strip() if len(sys.argv) > 5 else ""
+    member_email  = sys.argv[6].strip() if len(sys.argv) > 6 else ""
 
     if not workload_name:
         fail("workload-name must not be empty")
@@ -60,7 +61,7 @@ def parse_args() -> tuple[str, list[str], str, dict[str, str]]:
                 f"  {email}"
             )
 
-    return workload_name, environments, cidr_tier, env_emails
+    return workload_name, environments, cidr_tier, env_emails, member_email
 
 
 def repo_root_from_script() -> Path:
@@ -90,6 +91,7 @@ def update_metadata(
     cidr_tier: str,
     vpc_cidr: str,
     env_emails: dict[str, str],
+    member_email: str,
 ) -> None:
     metadata_path = target_dir / "metadata.json"
     if not metadata_path.exists():
@@ -115,6 +117,12 @@ def update_metadata(
     metadata["envs_path"] = f"workloads/{workload_name}/envs"
     metadata["cidr_tier"] = cidr_tier
     metadata["vpc_cidr"] = vpc_cidr
+    metadata["members"] = [
+        {
+            "email": member_email,
+            "permissions": {env: "AdministratorAccess" for env in environments},
+        }
+    ] if member_email else []
     metadata["environments"] = env_map
 
     for old_field in ["project_name", "account_id", "account_email", "enabled_for_access", "deploy_role_ready"]:
@@ -131,6 +139,7 @@ def create_workload_from_template(
     cidr_tier: str,
     vpc_cidr: str,
     env_emails: dict[str, str],
+    member_email: str,
 ) -> None:
     if not template_dir.exists():
         fail(f"template directory does not exist: {template_dir}")
@@ -139,11 +148,11 @@ def create_workload_from_template(
 
     shutil.copytree(template_dir, target_dir)
     replace_placeholders_in_text_files(target_dir, workload_name, env_emails["prod"])
-    update_metadata(target_dir, workload_name, environments, cidr_tier, vpc_cidr, env_emails)
+    update_metadata(target_dir, workload_name, environments, cidr_tier, vpc_cidr, env_emails, member_email)
 
 
 def main() -> None:
-    workload_name, environments, cidr_tier, env_emails = parse_args()
+    workload_name, environments, cidr_tier, env_emails, member_email = parse_args()
     repo = repo_root_from_script()
 
     sys.path.insert(0, str(repo / "scripts"))
@@ -175,6 +184,7 @@ def main() -> None:
                 cidr_tier=cidr_tier,
                 vpc_cidr=cidr,
                 env_emails=env_emails,
+                member_email=member_email,
             )
             created = True
             allocate_cidr.write_csv(allocate_cidr.build_csv_rows())
