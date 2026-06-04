@@ -56,13 +56,17 @@ jobs:
       - name: Skip unrelated targets
         id: match
         run: |
-          TARGET='${{ toJson(matrix.target) }}'
-          CHANGED='${{ needs.discover.outputs.changed }}'
-          MATCHED="$(python .github/scripts/filter_changed_targets.py "[$TARGET]" "$CHANGED")"
-          if [ "$MATCHED" = "[]" ]; then
-            echo "skip=true" >> "$GITHUB_OUTPUT"
-          else
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
             echo "skip=false" >> "$GITHUB_OUTPUT"
+          else
+            TARGET='${{ toJson(matrix.target) }}'
+            CHANGED='${{ needs.discover.outputs.changed }}'
+            MATCHED="$(python .github/scripts/filter_changed_targets.py "[$TARGET]" "$CHANGED")"
+            if [ "$MATCHED" = "[]" ]; then
+              echo "skip=true" >> "$GITHUB_OUTPUT"
+            else
+              echo "skip=false" >> "$GITHUB_OUTPUT"
+            fi
           fi
 
       - name: Stop early when target is unchanged
