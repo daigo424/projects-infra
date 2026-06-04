@@ -134,10 +134,63 @@ jobs:
 
       - name: Terraform plan
         if: steps.match.outputs.skip != 'true'
+        id: plan
         working-directory: ${{ matrix.target.path }}
         env:
           TF_VAR_environment: ${{ matrix.target.environment }}
           TF_VAR_vpc_cidr: ${{ matrix.target.vpc_cidr }}
           TF_VAR_workload_name: ${{ matrix.target.workload_name }}
           TF_VAR_additional_github_repos: ${{ toJson(matrix.target.additional_github_repos) }}
-        run: terraform plan -input=false -no-color
+        run: |
+          set -o pipefail
+          terraform plan -input=false -no-color 2>&1 | tee /tmp/plan_output.txt
+
+      - name: Post plan result to PR
+        if: always() && steps.match.outputs.skip != 'true' && github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const output = fs.readFileSync('/tmp/plan_output.txt', 'utf8');
+            const target = '${{ matrix.target.name }}';
+            const succeeded = '${{ steps.plan.outcome }}' === 'success';
+            const noChanges = output.includes('No changes.');
+
+            const icon = !succeeded ? '❌' : noChanges ? '✅' : '🔄';
+            const summary = !succeeded ? 'Plan failed' : noChanges ? 'No changes' : 'Changes detected';
+            const MAX = 50000;
+            const truncated = output.length > MAX
+              ? output.slice(0, MAX) + '\n... (truncated)'
+              : output;
+
+            const marker = `<!-- terraform-plan:${target} -->`;
+            const body = `${marker}
+            ### ${icon} \`${target}\` — ${summary}
+            <details><summary>Show plan output</summary>
+
+            \`\`\`
+            ${truncated}
+            \`\`\`
+            </details>`;
+
+            const comments = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+            });
+            const existing = comments.data.find(c => c.body.includes(marker));
+            if (existing) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: existing.id,
+                body,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body,
+              });
+            }
