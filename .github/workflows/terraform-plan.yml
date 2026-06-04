@@ -240,6 +240,28 @@ jobs:
               }
             }
 
+      - name: Write job summary
+        if: always()
+        run: |
+          echo "## Terraform Plan Summary" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Target | Result |" >> "$GITHUB_STEP_SUMMARY"
+          echo "|--------|--------|" >> "$GITHUB_STEP_SUMMARY"
+          for dir in $(ls /tmp/plans 2>/dev/null | sort); do
+            result_file="/tmp/plans/${dir}/result.json"
+            output_file="/tmp/plans/${dir}/output.txt"
+            [ -f "$result_file" ] || continue
+            target=$(python3 -c "import json,sys; print(json.load(open('${result_file}'))['target'])")
+            outcome=$(python3 -c "import json,sys; print(json.load(open('${result_file}'))['outcome'])")
+            if [ "$outcome" != "success" ]; then
+              echo "| \`${target}\` | ❌ Plan failed |" >> "$GITHUB_STEP_SUMMARY"
+            elif grep -q "No changes." "$output_file" 2>/dev/null; then
+              echo "| \`${target}\` | ✅ No changes |" >> "$GITHUB_STEP_SUMMARY"
+            else
+              echo "| \`${target}\` | 🔄 Changes detected |" >> "$GITHUB_STEP_SUMMARY"
+            fi
+          done
+
       - name: All plans passed
         run: |
           if [ "${{ needs.plan.result }}" != "success" ]; then
