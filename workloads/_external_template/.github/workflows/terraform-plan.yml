@@ -44,7 +44,7 @@ jobs:
         working-directory: ${{ env.TF_WORKING_DIR }}
         run: |
           terraform init -backend-config=backend.hcl \
-            -backend-config="key=workloads/${{ vars.WORKLOAD_NAME }}/${{ matrix.environment }}/terraform.tfstate"
+            -backend-config="key=workloads/${{ vars.WORKLOAD_NAME }}/${{ matrix.environment }}/additional_github_repos/${{ github.repository }}/terraform.tfstate"
 
       - name: Terraform fmt
         working-directory: ${{ env.TF_WORKING_DIR }}

@@ -214,7 +214,10 @@ jobs:
               -backend-config=backend.hcl \
               -backend-config="key=${STATE_KEY}" \
               -reconfigure
-            TF_VAR_environment="$ENV" terraform -chdir="$BOOTSTRAP_PATH" apply \
+            ADDITIONAL_REPOS=$(jq -c '.additional_github_repos // []' "$META")
+            TF_VAR_environment="$ENV" \
+            TF_VAR_additional_github_repos="$ADDITIONAL_REPOS" \
+            terraform -chdir="$BOOTSTRAP_PATH" apply \
               -auto-approve -input=false
 
             export AWS_ACCESS_KEY_ID="$PLATFORM_KEY_ID"

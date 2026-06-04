@@ -3,7 +3,7 @@
   "display_name": "uw-p-klein",
   "region": "ap-northeast-1",
   "role_name": "GitHubActionsWorkloadDeployRole",
-  "account_bootstrap_path": "platform/workload-accounts/uw-p-klein",
+  "account_bootstrap_path": "platform/workloads/account-bootstrap",
   "envs_path": "workloads/uw-p-klein",
   "cidr_tier": "C",
   "vpc_cidr": "10.64.16.0/20",

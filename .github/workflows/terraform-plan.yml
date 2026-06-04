@@ -139,4 +139,5 @@ jobs:
           TF_VAR_environment: ${{ matrix.target.environment }}
           TF_VAR_vpc_cidr: ${{ matrix.target.vpc_cidr }}
           TF_VAR_workload_name: ${{ matrix.target.workload_name }}
+          TF_VAR_additional_github_repos: ${{ toJson(matrix.target.additional_github_repos) }}
         run: terraform plan -input=false -no-color
