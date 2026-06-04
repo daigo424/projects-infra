@@ -77,7 +77,7 @@ jobs:
           BRANCH="add-workload/${NAME}"
 
           git checkout -b "$BRANCH"
-          git add "workloads/${NAME}/" ".repo-meta/"
+          git add "workloads/${NAME}/" "platform/workload-accounts/${NAME}/" ".repo-meta/"
           git commit -m "feat: add workload ${NAME}"
           git push --force origin "$BRANCH"
 

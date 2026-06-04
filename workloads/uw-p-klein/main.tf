@@ -9,7 +9,7 @@ resource "aws_vpc" "this" {
 }
 
 module "whatsapp_webhook" {
-  source = "../modules/whatsapp-webhook"
+  source = "./modules/whatsapp-webhook"
 
   project           = "whatsapp-webhook-${var.environment}"
   graph_api_version = "v23.0"
