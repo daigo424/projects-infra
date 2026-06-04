@@ -18,7 +18,7 @@ Go to **Settings → Secrets and variables → Actions → Variables** in the ex
 
 | Variable | Value |
 |---|---|
-| `WORKLOAD_NAME` | Workload name as registered in projects-infra (e.g. `my-service`). Used as the S3 state key prefix: `workloads/<WORKLOAD_NAME>/<env>/terraform.tfstate` |
+| `WORKLOAD_NAME` | Workload name as registered in projects-infra (e.g. `my-service`). Used as part of the S3 state key. |
 | `PROD_ACCOUNT_ID` | AWS account ID for the prod environment |
 | `TEST_ACCOUNT_ID` | AWS account ID for the test environment |
 
@@ -61,21 +61,27 @@ variable "environment" {
 
 For the external repository to assume `GitHubActionsWorkloadDeployRole`, the following must be set up in projects-infra:
 
-- `additional_github_repos = ["org/this-repo"]` added to `workloads/<name>/account-bootstrap/terraform.auto.tfvars`
+- The workload was created via `create-workload-external` workflow with this repository specified as `terraform_repo`
+- This sets `additional_github_repos` in `metadata.json` and triggers account-bootstrap
 - account-bootstrap has been applied and `deploy_role_ready = true`
+
+### 6. (Optional) Enable branch protection
+
+Add `all-plans-passed` as a required status check in **Settings → Rules** to prevent merging when plan fails.
 
 ## S3 State Keys
 
-State is stored in the shared S3 bucket alongside projects-infra under the following keys:
+State is stored in the shared S3 bucket under the following keys:
 
 ```
-workloads/<WORKLOAD_NAME>/prod/terraform.tfstate
-workloads/<WORKLOAD_NAME>/test/terraform.tfstate
+workloads/<WORKLOAD_NAME>/prod/additional_github_repos/<org>/<repo>/terraform.tfstate
+workloads/<WORKLOAD_NAME>/test/additional_github_repos/<org>/<repo>/terraform.tfstate
 ```
 
 ## Workflow Behavior
 
 | Workflow | Trigger | Description |
 |---|---|---|
-| `terraform-plan` | PR created / updated | Runs plan for prod and test in parallel |
+| `terraform-plan` | PR created / updated | Runs plan for prod and test in parallel, posts results as PR comments |
+| `terraform-plan` | Manual (workflow_dispatch) | Force-runs plan for all environments, results visible in job summary |
 | `terraform-apply` | Manual (workflow_dispatch) | Select an environment and apply |
