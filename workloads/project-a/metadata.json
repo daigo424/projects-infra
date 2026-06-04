@@ -3,7 +3,7 @@
   "display_name": "project-a",
   "region": "ap-northeast-1",
   "role_name": "GitHubActionsWorkloadDeployRole",
-  "account_bootstrap_path": "platform/workload-accounts/project-a",
+  "account_bootstrap_path": "platform/workloads/account-bootstrap",
   "envs_path": "workloads/project-a",
   "cidr_tier": "C",
   "vpc_cidr": "10.64.0.0/20",

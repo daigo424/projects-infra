@@ -67,29 +67,20 @@ jobs:
             "${{ github.event.inputs.test_email }}" \
             "${{ github.event.inputs.member_email }}"
 
-      - name: Configure for external repo
+      - name: Add additional_github_repos to metadata
         run: |
           NAME="${{ github.event.inputs.workload_name }}"
           TERRAFORM_REPO="${{ github.event.inputs.terraform_repo }}"
-
-          # Add terraform_repo to metadata.json
           python - <<PYEOF
           import json
           path = f"workloads/${NAME}/metadata.json"
           with open(path) as f:
               meta = json.load(f)
-          meta["terraform_repo"] = "${TERRAFORM_REPO}"
+          meta["additional_github_repos"] = ["${TERRAFORM_REPO}"]
           with open(path, "w") as f:
               json.dump(meta, f, indent=2)
               f.write("\n")
           PYEOF
-
-          # Add additional_github_repos to account-bootstrap/terraform.auto.tfvars
-          echo "additional_github_repos  = [\"${TERRAFORM_REPO}\"]" \
-            >> "workloads/${NAME}/account-bootstrap/terraform.auto.tfvars"
-
-          # Remove envs/ — Terraform is managed in the external repo
-          rm -rf "workloads/${NAME}/envs"
 
       - name: Configure Git
         run: |
@@ -119,7 +110,7 @@ jobs:
           - **Environments:** \`${ENVS}\`
           - **Terraform repo:** \`${TERRAFORM_REPO}\`
 
-          Terraform code is managed in [\`${TERRAFORM_REPO}\`](https://github.com/${TERRAFORM_REPO}). This repo handles account creation and bootstrapping only.
+          Terraform code is managed in [\`${TERRAFORM_REPO}\`](https://github.com/${TERRAFORM_REPO}). This repo handles account creation, bootstrapping, and platform-level infrastructure only.
 
           Merging this PR will automatically trigger AWS account creation and kick off the provisioning sequence. Two more PRs will follow — merge them in order as each appears.
 

@@ -113,7 +113,7 @@ def update_metadata(
 
     metadata["workload_name"] = workload_name
     metadata["display_name"] = workload_name
-    metadata["account_bootstrap_path"] = f"platform/workload-accounts/{workload_name}"
+    metadata["account_bootstrap_path"] = f"platform/workloads/account-bootstrap"
     metadata["envs_path"] = f"workloads/{workload_name}"
     metadata["cidr_tier"] = cidr_tier
     metadata["vpc_cidr"] = vpc_cidr
@@ -133,9 +133,7 @@ def update_metadata(
 
 def create_workload_from_template(
     workload_template_dir: Path,
-    platform_template_dir: Path,
     workload_target_dir: Path,
-    platform_target_dir: Path,
     workload_name: str,
     environments: list[str],
     cidr_tier: str,
@@ -145,17 +143,11 @@ def create_workload_from_template(
 ) -> None:
     if not workload_template_dir.exists():
         fail(f"template directory does not exist: {workload_template_dir}")
-    if not platform_template_dir.exists():
-        fail(f"template directory does not exist: {platform_template_dir}")
     if workload_target_dir.exists():
         fail(f"{workload_target_dir} already exists")
-    if platform_target_dir.exists():
-        fail(f"{platform_target_dir} already exists")
 
     shutil.copytree(workload_template_dir, workload_target_dir)
-    shutil.copytree(platform_template_dir, platform_target_dir)
     replace_placeholders_in_text_files(workload_target_dir, workload_name, env_emails["prod"])
-    replace_placeholders_in_text_files(platform_target_dir, workload_name, env_emails["prod"])
     update_metadata(workload_target_dir, workload_name, environments, cidr_tier, vpc_cidr, env_emails, member_email)
 
 
@@ -167,9 +159,7 @@ def main() -> None:
     import allocate_cidr  # noqa: E402
 
     workload_template_dir = repo / "workloads" / "_template"
-    platform_template_dir = repo / "platform" / "workload-accounts" / "_template"
     workload_target_dir   = repo / "workloads" / workload_name
-    platform_target_dir   = repo / "platform" / "workload-accounts" / workload_name
 
     registry_dir       = repo / ".repo-meta"
     registry_lock_path = registry_dir / "used_vpc_cidrs.lock"
@@ -188,9 +178,7 @@ def main() -> None:
         try:
             create_workload_from_template(
                 workload_template_dir=workload_template_dir,
-                platform_template_dir=platform_template_dir,
                 workload_target_dir=workload_target_dir,
-                platform_target_dir=platform_target_dir,
                 workload_name=workload_name,
                 environments=environments,
                 cidr_tier=cidr_tier,
@@ -201,10 +189,8 @@ def main() -> None:
             created = True
             allocate_cidr.write_csv(allocate_cidr.build_csv_rows())
         except Exception:
-            if not created:
-                for d in [workload_target_dir, platform_target_dir]:
-                    if d.exists():
-                        shutil.rmtree(d)
+            if not created and workload_target_dir.exists():
+                shutil.rmtree(workload_target_dir)
             raise
 
     print(f"Created {workload_target_dir}")

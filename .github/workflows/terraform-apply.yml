@@ -98,4 +98,5 @@ jobs:
           TF_VAR_environment: ${{ fromJson(steps.select.outputs.target).environment }}
           TF_VAR_vpc_cidr: ${{ fromJson(steps.select.outputs.target).vpc_cidr }}
           TF_VAR_workload_name: ${{ fromJson(steps.select.outputs.target).workload_name }}
+          TF_VAR_additional_github_repos: ${{ toJson(fromJson(steps.select.outputs.target).additional_github_repos) }}
         run: terraform apply -input=false -auto-approve

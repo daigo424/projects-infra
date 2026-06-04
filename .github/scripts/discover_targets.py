@@ -43,15 +43,15 @@ for metadata_file in sorted(workloads_dir.glob("*/metadata.json")):
             "environment": env_name,
             "account_id": env_cfg.get("account_id", ""),
             "deploy_role_ready": env_cfg.get("deploy_role_ready", False),
+            "additional_github_repos": metadata.get("additional_github_repos", []),
         })
-        if not metadata.get("terraform_repo"):
-            targets.append({
-                "name": f"workloads/{workload_name}/envs:{env_name}",
-                "path": metadata["envs_path"],
-                "kind": "workload",
-                "workload_name": workload_name,
-                "environment": env_name,
-                "vpc_cidr": metadata.get("vpc_cidr", ""),
-            })
+        targets.append({
+            "name": f"workloads/{workload_name}/envs:{env_name}",
+            "path": metadata["envs_path"],
+            "kind": "workload",
+            "workload_name": workload_name,
+            "environment": env_name,
+            "vpc_cidr": metadata.get("vpc_cidr", ""),
+        })
 
 print(json.dumps(targets))

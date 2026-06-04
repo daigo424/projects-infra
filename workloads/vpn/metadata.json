@@ -3,7 +3,7 @@
   "display_name": "vpn",
   "region": "ap-northeast-1",
   "role_name": "GitHubActionsWorkloadDeployRole",
-  "account_bootstrap_path": "platform/workload-accounts/vpn",
+  "account_bootstrap_path": "platform/workloads/account-bootstrap",
   "envs_path": "workloads/vpn",
   "cidr_tier": "C",
   "vpc_cidr": "10.64.48.0/20",
