@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       target_name:
-        description: "Terraform target name (例: platform/access, workloads/project-a/envs:prod, workloads/project-a/bootstrap:prod)"
+        description: "Terraform target name (例: platform/access, workloads/project-a:prod, workloads/project-a/account-bootstrap:prod)"
         required: true
         type: string
 

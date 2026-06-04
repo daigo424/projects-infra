@@ -36,7 +36,7 @@ for metadata_file in sorted(workloads_dir.glob("*/metadata.json")):
 
     for env_name, env_cfg in metadata.get("environments", {}).items():
         targets.append({
-            "name": f"workloads/{workload_name}/bootstrap:{env_name}",
+            "name": f"workloads/{workload_name}/account-bootstrap:{env_name}",
             "path": metadata["account_bootstrap_path"],
             "kind": "workload-bootstrap",
             "workload_name": workload_name,
@@ -46,7 +46,7 @@ for metadata_file in sorted(workloads_dir.glob("*/metadata.json")):
             "additional_github_repos": metadata.get("additional_github_repos", []),
         })
         targets.append({
-            "name": f"workloads/{workload_name}/envs:{env_name}",
+            "name": f"workloads/{workload_name}:{env_name}",
             "path": metadata["envs_path"],
             "kind": "workload",
             "workload_name": workload_name,
