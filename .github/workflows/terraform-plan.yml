@@ -194,3 +194,15 @@ jobs:
                 body,
               });
             }
+
+  all-plans-passed:
+    needs: [plan]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: All plans passed
+        run: |
+          if [ "${{ needs.plan.result }}" != "success" ]; then
+            echo "One or more plan jobs failed"
+            exit 1
+          fi
