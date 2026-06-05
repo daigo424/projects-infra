@@ -113,7 +113,11 @@ resource "aws_spot_instance_request" "vpn_server" {
               echo 'net.ipv6.conf.all.forwarding = 1' | tee -a /etc/sysctl.conf
               sysctl -p
 
-              apt-get install -y awscli
+              apt-get install -y unzip
+              curl -fsSL "https://awscli.amazonaws.com/awscli-exe-linux-aarch64.zip" -o /tmp/awscliv2.zip
+              unzip -q /tmp/awscliv2.zip -d /tmp
+              /tmp/aws/install
+              rm -rf /tmp/awscliv2.zip /tmp/aws
 
               AUTH_KEY=$(aws ssm get-parameter \
                 --name "/vpn/tailscale-auth-key" \
