@@ -122,7 +122,7 @@ resource "aws_spot_instance_request" "vpn_server" {
                 --query Parameter.Value \
                 --output text)
 
-              curl -fsSL https://tailscale.com | sh
+              curl -fsSL https://tailscale.com/install.sh | sh
 
               tailscale up --authkey="$AUTH_KEY" --advertise-routes=${aws_vpc.this.cidr_block} --advertise-exit-node --accept-dns=false
               EOF
