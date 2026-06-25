@@ -10,7 +10,7 @@ resource "aws_vpc" "this" {
 
 resource "aws_subnet" "public_subnet" {
   vpc_id                  = aws_vpc.this.id
-  availability_zone       = "ap-northeast-1a"
+  availability_zone       = "ap-northeast-1c"
   map_public_ip_on_launch = true
 
   # Automatically calculates a /24 subnet from the /20 VPC (20 + 4 = 24)
