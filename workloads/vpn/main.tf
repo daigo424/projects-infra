@@ -111,6 +111,7 @@ resource "aws_instance" "vpn_server" {
               echo 'net.ipv6.conf.all.forwarding = 1' | tee -a /etc/sysctl.conf
               sysctl -p
 
+              apt-get update -y
               apt-get install -y unzip
               curl -fsSL "https://awscli.amazonaws.com/awscli-exe-linux-aarch64.zip" -o /tmp/awscliv2.zip
               unzip -q /tmp/awscliv2.zip -d /tmp
