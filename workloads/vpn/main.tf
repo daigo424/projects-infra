@@ -10,7 +10,7 @@ resource "aws_vpc" "this" {
 
 resource "aws_subnet" "public_subnet" {
   vpc_id                  = aws_vpc.this.id
-  availability_zone       = "ap-northeast-1d"
+  availability_zone       = "ap-northeast-1a"
   map_public_ip_on_launch = true
 
   # Automatically calculates a /24 subnet from the /20 VPC (20 + 4 = 24)
@@ -84,18 +84,11 @@ resource "aws_iam_role_policy" "vpn_server_ssm" {
 
   policy = jsonencode({
     Version = "2012-10-17"
-    Statement = [
-      {
-        Effect   = "Allow"
-        Action   = ["ssm:GetParameter"]
-        Resource = "arn:aws:ssm:${var.aws_region}:*:parameter/vpn/tailscale-auth-key"
-      },
-      {
-        Effect   = "Allow"
-        Action   = ["ec2:AssociateAddress"]
-        Resource = "*"
-      }
-    ]
+    Statement = [{
+      Effect   = "Allow"
+      Action   = ["ssm:GetParameter"]
+      Resource = "arn:aws:ssm:${var.aws_region}:*:parameter/vpn/tailscale-auth-key"
+    }]
   })
 }
 
@@ -104,11 +97,9 @@ resource "aws_iam_instance_profile" "vpn_server" {
   role = aws_iam_role.vpn_server.name
 }
 
-resource "aws_spot_instance_request" "vpn_server" {
-  ami                  = data.aws_ami.vpn_machine_image.id
-  instance_type        = "t4g.nano"
-  spot_type            = "persistent"
-  wait_for_fulfillment = true
+resource "aws_instance" "vpn_server" {
+  ami           = data.aws_ami.vpn_machine_image.id
+  instance_type = "t4g.nano"
 
   subnet_id              = aws_subnet.public_subnet.id
   vpc_security_group_ids = [aws_security_group.vpn_server_sg.id]
@@ -126,13 +117,6 @@ resource "aws_spot_instance_request" "vpn_server" {
               /tmp/aws/install
               rm -rf /tmp/awscliv2.zip /tmp/aws
 
-              TOKEN=$(curl -s -X PUT "http://169.254.169.254/latest/api/token" -H "X-aws-ec2-metadata-token-ttl-seconds: 21600")
-              INSTANCE_ID=$(curl -s -H "X-aws-ec2-metadata-token: $TOKEN" http://169.254.169.254/latest/meta-data/instance-id)
-              aws ec2 associate-address \
-                --instance-id "$INSTANCE_ID" \
-                --allocation-id "${aws_eip.vpn_server_eip.id}" \
-                --region ${var.aws_region}
-
               AUTH_KEY=$(aws ssm get-parameter \
                 --name "/vpn/tailscale-auth-key" \
                 --with-decryption \
@@ -145,7 +129,7 @@ resource "aws_spot_instance_request" "vpn_server" {
               tailscale up --authkey="$AUTH_KEY" --advertise-routes=${aws_vpc.this.cidr_block} --advertise-exit-node --accept-dns=false
               EOF
 
-  tags = { Name = "${var.workload_name}-${var.environment}-spot" }
+  tags = { Name = "${var.workload_name}-${var.environment}-vpn" }
 }
 
 resource "aws_eip" "vpn_server_eip" {
@@ -154,7 +138,7 @@ resource "aws_eip" "vpn_server_eip" {
 }
 
 resource "aws_eip_association" "vpn_server_eip_assoc" {
-  instance_id   = aws_spot_instance_request.vpn_server.spot_instance_id
+  instance_id   = aws_instance.vpn_server.id
   allocation_id = aws_eip.vpn_server_eip.id
 }
 
