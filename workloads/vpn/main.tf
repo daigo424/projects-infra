@@ -84,11 +84,18 @@ resource "aws_iam_role_policy" "vpn_server_ssm" {
 
   policy = jsonencode({
     Version = "2012-10-17"
-    Statement = [{
-      Effect   = "Allow"
-      Action   = ["ssm:GetParameter"]
-      Resource = "arn:aws:ssm:${var.aws_region}:*:parameter/vpn/tailscale-auth-key"
-    }]
+    Statement = [
+      {
+        Effect   = "Allow"
+        Action   = ["ssm:GetParameter"]
+        Resource = "arn:aws:ssm:${var.aws_region}:*:parameter/vpn/tailscale-auth-key"
+      },
+      {
+        Effect   = "Allow"
+        Action   = ["ec2:AssociateAddress"]
+        Resource = "*"
+      }
+    ]
   })
 }
 
@@ -119,6 +126,13 @@ resource "aws_spot_instance_request" "vpn_server" {
               /tmp/aws/install
               rm -rf /tmp/awscliv2.zip /tmp/aws
 
+              TOKEN=$(curl -s -X PUT "http://169.254.169.254/latest/api/token" -H "X-aws-ec2-metadata-token-ttl-seconds: 21600")
+              INSTANCE_ID=$(curl -s -H "X-aws-ec2-metadata-token: $TOKEN" http://169.254.169.254/latest/meta-data/instance-id)
+              aws ec2 associate-address \
+                --instance-id "$INSTANCE_ID" \
+                --allocation-id "${aws_eip.vpn_server_eip.id}" \
+                --region ${var.aws_region}
+
               AUTH_KEY=$(aws ssm get-parameter \
                 --name "/vpn/tailscale-auth-key" \
                 --with-decryption \
@@ -140,8 +154,6 @@ resource "aws_eip" "vpn_server_eip" {
 }
 
 resource "aws_eip_association" "vpn_server_eip_assoc" {
-  # Do not associate inside the aws_spot_instance_request resource.
-  # Use this independent resource to handle spot instance recreation smoothly.
   instance_id   = aws_spot_instance_request.vpn_server.spot_instance_id
   allocation_id = aws_eip.vpn_server_eip.id
 }
