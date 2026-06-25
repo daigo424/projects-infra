@@ -98,8 +98,9 @@ resource "aws_iam_instance_profile" "vpn_server" {
 }
 
 resource "aws_instance" "vpn_server" {
-  ami           = data.aws_ami.vpn_machine_image.id
-  instance_type = "t4g.nano"
+  ami                         = data.aws_ami.vpn_machine_image.id
+  instance_type               = "t4g.nano"
+  user_data_replace_on_change = true
 
   subnet_id              = aws_subnet.public_subnet.id
   vpc_security_group_ids = [aws_security_group.vpn_server_sg.id]
