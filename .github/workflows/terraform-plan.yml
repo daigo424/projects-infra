@@ -2,11 +2,6 @@ name: terraform-plan
 
 on:
   pull_request:
-    paths:
-      - "platform/**"
-      - "workloads/**"
-      - ".github/workflows/**"
-      - ".github/scripts/**"
   workflow_dispatch:
 
 permissions:

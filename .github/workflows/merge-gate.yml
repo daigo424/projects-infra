@@ -1,0 +1,81 @@
+name: merge-gate
+
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: read
+
+jobs:
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      terraform: ${{ steps.filter.outputs.terraform }}
+      scripts: ${{ steps.filter.outputs.scripts }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            terraform:
+              - 'platform/**/*.tf'
+              - 'platform/**/*.tfvars'
+              - 'platform/**/*.hcl'
+              - 'workloads/**/*.tf'
+              - 'workloads/**/*.tfvars'
+              - 'workloads/**/*.hcl'
+              - 'workloads/**/metadata.json'
+              - 'platform/**/*.json'
+            scripts:
+              - '.github/scripts/**'
+
+  validate-terraform:
+    needs: changes
+    if: needs.changes.outputs.terraform == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+      - name: Check formatting
+        run: terraform fmt -check -recursive
+      - name: Validate metadata JSON
+        run: |
+          find workloads -name 'metadata.json' ! -path '*/_*' \
+               platform -name '*.json' \
+            | while read f; do
+            python -m json.tool "$f" > /dev/null || { echo "Invalid JSON: $f"; exit 1; }
+          done
+
+  validate-scripts:
+    needs: changes
+    if: needs.changes.outputs.scripts == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install dependencies
+        run: pip install filelock
+      - name: Check syntax
+        run: python -m compileall -q .github/scripts/
+
+  gate:
+    needs: [changes, validate-terraform, validate-scripts]
+    if: always() && needs.changes.result == 'success'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Evaluate gates
+        run: |
+          for result in \
+            "${{ needs.validate-terraform.result }}" \
+            "${{ needs.validate-scripts.result }}"; do
+            if [[ "$result" == "failure" || "$result" == "cancelled" ]]; then
+              echo "Gate failed: $result"
+              exit 1
+            fi
+          done
+          echo "All gates passed"
