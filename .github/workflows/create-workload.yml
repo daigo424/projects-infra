@@ -16,11 +16,13 @@ on:
         required: false
         type: string
       cidr_tier:
-        description: "Tier for VPC CIDR allocation (C = normal service, D = microservice)"
+        description: "Tier for VPC CIDR allocation (A = /16 common infra, B = /18 large scale, C = /20 normal service, D = /22 microservice)"
         required: true
         type: choice
         default: C
         options:
+          - A
+          - B
           - C
           - D
       member_email:
