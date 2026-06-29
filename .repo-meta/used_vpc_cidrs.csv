@@ -1,4 +1,5 @@
 vpc_cidr,tier,workload_name,prod_account_email,test_account_email
+10.0.0.0/16,A,aily,ishii.daigo+aily-prod@gmail.com,ishii.daigo+aily-test@gmail.com
 10.64.0.0/20,C,project-a,aws-project-a@example.com,aws-project-a-test@example.com
 10.64.16.0/20,C,uw-p-klein,ishii.daigo+aws-uw-p-klein@gmail.com,
 10.64.32.0/20,C,weather-forecast-ai,ishii.daigo+weather-forecast-ai-prod@gmail.com,ishii.daigo+weather-forecast-ai-test@gmail.com
