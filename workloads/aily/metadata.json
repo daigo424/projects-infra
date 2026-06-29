@@ -1,0 +1,36 @@
+{
+  "workload_name": "aily",
+  "display_name": "aily",
+  "region": "ap-northeast-1",
+  "role_name": "GitHubActionsWorkloadDeployRole",
+  "account_bootstrap_path": "platform/workloads/account-bootstrap",
+  "envs_path": "workloads/aily",
+  "cidr_tier": "A",
+  "vpc_cidr": "10.0.0.0/16",
+  "members": [
+    {
+      "email": "ishii.daigo@gmail.com",
+      "permissions": {
+        "prod": "AdministratorAccess",
+        "test": "AdministratorAccess"
+      }
+    }
+  ],
+  "environments": {
+    "prod": {
+      "account_id": "",
+      "account_email": "ishii.daigo+aily-prod@gmail.com",
+      "enabled_for_access": true,
+      "deploy_role_ready": false
+    },
+    "test": {
+      "account_id": "",
+      "account_email": "ishii.daigo+aily-test@gmail.com",
+      "enabled_for_access": true,
+      "deploy_role_ready": false
+    }
+  },
+  "additional_github_repos": [
+    "daigo424/aily"
+  ]
+}
