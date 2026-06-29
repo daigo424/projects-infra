@@ -38,7 +38,14 @@ account_id = env_cfg.get("account_id", "")
 role_name = metadata.get("role_name", "")
 
 if not account_id or len(account_id) != 12:
-    print(f"Invalid account_id for workload {workload_name} env {env_name}", file=sys.stderr)
+    if not env_cfg.get("deploy_role_ready", False):
+        print(
+            f"Workload '{workload_name}' env '{env_name}' is not ready yet "
+            f"(deploy_role_ready=false). Run the account-bootstrap apply first.",
+            file=sys.stderr,
+        )
+    else:
+        print(f"Invalid account_id '{account_id}' for workload '{workload_name}' env '{env_name}'", file=sys.stderr)
     sys.exit(1)
 if not role_name:
     print(f"Missing role_name for workload {workload_name}", file=sys.stderr)

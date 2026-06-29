@@ -56,6 +56,14 @@ jobs:
       - name: Skip unrelated targets
         id: match
         run: |
+          if [ "${{ matrix.target.kind }}" = "workload" ] && [ "${{ matrix.target.deploy_role_ready }}" != "true" ]; then
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          if [ "${{ matrix.target.kind }}" = "workload-bootstrap" ] && [ -z "${{ matrix.target.account_id }}" ]; then
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
             echo "skip=false" >> "$GITHUB_OUTPUT"
           else

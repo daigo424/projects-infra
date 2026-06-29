@@ -26,8 +26,8 @@ on:
           - C
           - D
       member_email:
-        description: "Email of the IAM Identity Center user to grant AdministratorAccess (leave blank for no members)"
-        required: false
+        description: "Email of the IAM Identity Center user to grant AdministratorAccess"
+        required: true
         type: string
       environments:
         description: "Environments to create"
