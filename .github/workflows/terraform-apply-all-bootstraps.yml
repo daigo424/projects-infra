@@ -1,0 +1,72 @@
+name: terraform-apply-all-bootstraps
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "platform/workloads/account-bootstrap/**"
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  discover:
+    runs-on: ubuntu-latest
+    outputs:
+      targets: ${{ steps.targets.outputs.targets }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - id: targets
+        run: |
+          TARGETS="$(python .github/scripts/discover_targets.py | jq -c '[.[] | select(.kind == "workload-bootstrap")]')"
+          echo "targets=${TARGETS}" >> "$GITHUB_OUTPUT"
+
+  apply:
+    needs: discover
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        target: ${{ fromJson(needs.discover.outputs.targets) }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Resolve role ARN
+        id: role
+        run: |
+          ROLE_ARN="$(python .github/scripts/resolve_role_arn.py '${{ toJson(matrix.target) }}')"
+          echo "role_arn=${ROLE_ARN}" >> "$GITHUB_OUTPUT"
+
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ steps.role.outputs.role_arn }}
+          aws-region: ap-northeast-1
+
+      - name: Chain to OrganizationAccountAccessRole
+        if: matrix.target.deploy_role_ready == false
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::${{ matrix.target.account_id }}:role/OrganizationAccountAccessRole
+          aws-region: ap-northeast-1
+          role-chaining: true
+
+      - uses: hashicorp/setup-terraform@v3
+
+      - name: Terraform init
+        working-directory: ${{ matrix.target.path }}
+        run: |
+          terraform init -backend-config=backend.hcl \
+            -backend-config="key=workloads/${{ matrix.target.workload_name }}/${{ matrix.target.environment }}/account-bootstrap/terraform.tfstate"
+
+      - name: Terraform apply
+        working-directory: ${{ matrix.target.path }}
+        env:
+          TF_VAR_environment: ${{ matrix.target.environment }}
+          TF_VAR_workload_name: ${{ matrix.target.workload_name }}
+          TF_VAR_additional_github_repos: ${{ toJson(matrix.target.additional_github_repos) }}
+        run: terraform apply -input=false -auto-approve
