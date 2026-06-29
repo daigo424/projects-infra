@@ -187,6 +187,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/download-artifact@v4
+        continue-on-error: true
         with:
           pattern: plan-*
           path: /tmp/plans
