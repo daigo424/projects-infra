@@ -21,13 +21,13 @@
       "account_id": "412628362222",
       "account_email": "ishii.daigo+aily-prod@gmail.com",
       "enabled_for_access": true,
-      "deploy_role_ready": false
+      "deploy_role_ready": true
     },
     "test": {
       "account_id": "815935788564",
       "account_email": "ishii.daigo+aily-test@gmail.com",
       "enabled_for_access": true,
-      "deploy_role_ready": false
+      "deploy_role_ready": true
     }
   },
   "additional_github_repos": [
