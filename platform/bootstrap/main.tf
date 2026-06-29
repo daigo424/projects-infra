@@ -11,13 +11,11 @@ locals {
     for pair in flatten([
       for config in local.raw_workload_configs : [
         for env_name, env_config in config.environments : {
-          key               = "${config.workload_name}-${env_name}"
-          workload_name     = config.workload_name
-          env_name          = env_name
-          account_id        = try(env_config.account_id, "")
-          role_name         = config.role_name
-          deploy_role_ready = try(env_config.deploy_role_ready, false)
-          state_prefix      = "workloads/${config.workload_name}/${env_name}"
+          key           = "${config.workload_name}-${env_name}"
+          workload_name = config.workload_name
+          env_name      = env_name
+          account_id    = try(env_config.account_id, "")
+          state_prefix  = "workloads/${config.workload_name}/${env_name}"
         }
       ]
     ]) : pair.key => pair
@@ -26,12 +24,7 @@ locals {
 
   env_role_principals = {
     for key, env in local.env_configs :
-    key => compact([
-      "arn:aws:iam::${env.account_id}:role/OrganizationAccountAccessRole",
-      env.deploy_role_ready
-      ? "arn:aws:iam::${env.account_id}:role/${env.role_name}"
-      : null
-    ])
+    key => ["arn:aws:iam::${env.account_id}:root"]
   }
 }
 
