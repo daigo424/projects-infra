@@ -1,2 +1,2 @@
-aws_region   = "ap-northeast-1"
+aws_region    = "ap-northeast-1"
 workload_name = "aily"
