@@ -264,7 +264,7 @@ jobs:
           \`deploy_role_ready: true\` has been set in \`metadata.json\` for all environments of **\`${NAME}\`**.
 
           Merging this PR will automatically trigger:
-          - \`platform-bootstrap\` apply (adds S3 bucket policy for \`GitHubActionsWorkloadDeployRole\`)
+          - \`platform-bootstrap\` apply
           EOF
           )"
 
