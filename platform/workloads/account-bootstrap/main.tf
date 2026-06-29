@@ -14,7 +14,7 @@ locals {
   trusted_repos = concat(["${var.github_org}/${var.github_repo}"], var.additional_github_repos)
   trusted_subs = flatten([
     for repo in local.trusted_repos : [
-      "repo:${repo}:ref:refs/heads/main",
+      "repo:${repo}:ref:refs/heads/*",
       "repo:${repo}:pull_request",
       "repo:${repo}:ref:refs/tags/*",
     ]
