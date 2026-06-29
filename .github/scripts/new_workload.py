@@ -61,6 +61,9 @@ def parse_args() -> tuple[str, list[str], str, dict[str, str], str]:
                 f"  {email}"
             )
 
+    if not member_email:
+        fail("member_email is required: at least one IAM Identity Center user must be specified")
+
     return workload_name, environments, cidr_tier, env_emails, member_email
 
 
