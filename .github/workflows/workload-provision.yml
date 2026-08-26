@@ -150,7 +150,7 @@ jobs:
       - name: Phase 2 — Create PR [2/3]
         if: steps.detect.outputs.phase == '2'
         env:
-          GH_TOKEN: ${{ github.token }}
+          GH_TOKEN: ${{ secrets.PROVISION_TOKEN || github.token }}
           NAME: ${{ steps.detect.outputs.name }}
         run: |
           gh pr list --head "provision/${NAME}/accounts" --json number --jq '.[0].number' | grep -q . || \
@@ -252,7 +252,7 @@ jobs:
       - name: Phase 3 — Create PR [3/3]
         if: steps.detect.outputs.phase == '3'
         env:
-          GH_TOKEN: ${{ github.token }}
+          GH_TOKEN: ${{ secrets.PROVISION_TOKEN || github.token }}
           NAME: ${{ steps.detect.outputs.name }}
         run: |
           gh pr list --head "provision/${NAME}/deploy-role" --json number --jq '.[0].number' | grep -q . || \
