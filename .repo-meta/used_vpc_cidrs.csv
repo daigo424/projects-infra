@@ -4,3 +4,4 @@ vpc_cidr,tier,workload_name,prod_account_email,test_account_email
 10.64.16.0/20,C,uw-p-klein,ishii.daigo+aws-uw-p-klein@gmail.com,
 10.64.32.0/20,C,weather-forecast-ai,ishii.daigo+weather-forecast-ai-prod@gmail.com,ishii.daigo+weather-forecast-ai-test@gmail.com
 10.64.48.0/20,C,vpn,ishii.daigo+aws-vpn@gmail.com,
+10.64.64.0/20,C,robot-cloud,ishii.daigo+robot-cloud-prod@gmail.com,ishii.daigo+robot-cloud-test@gmail.com
