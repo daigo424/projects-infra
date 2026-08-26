@@ -1,0 +1,36 @@
+{
+  "workload_name": "robot-cloud",
+  "display_name": "robot-cloud",
+  "region": "ap-northeast-1",
+  "role_name": "GitHubActionsWorkloadDeployRole",
+  "account_bootstrap_path": "platform/workloads/account-bootstrap",
+  "envs_path": "workloads/robot-cloud",
+  "cidr_tier": "C",
+  "vpc_cidr": "10.64.64.0/20",
+  "members": [
+    {
+      "email": "ishii.daigo@gmail.com",
+      "permissions": {
+        "prod": "AdministratorAccess",
+        "test": "AdministratorAccess"
+      }
+    }
+  ],
+  "environments": {
+    "prod": {
+      "account_id": "",
+      "account_email": "ishii.daigo+robot-cloud-prod@gmail.com",
+      "enabled_for_access": true,
+      "deploy_role_ready": false
+    },
+    "test": {
+      "account_id": "",
+      "account_email": "ishii.daigo+robot-cloud-test@gmail.com",
+      "enabled_for_access": true,
+      "deploy_role_ready": false
+    }
+  },
+  "additional_github_repos": [
+    "daigo424/robot-cloud"
+  ]
+}
