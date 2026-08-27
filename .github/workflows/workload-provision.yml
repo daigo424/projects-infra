@@ -184,6 +184,7 @@ jobs:
 
       - name: Phase 3 — Apply account-bootstrap for each environment
         if: steps.detect.outputs.phase == '3'
+        id: phase3
         env:
           NAME: ${{ steps.detect.outputs.name }}
         run: |
@@ -194,8 +195,14 @@ jobs:
           PLATFORM_SECRET_KEY="$AWS_SECRET_ACCESS_KEY"
           PLATFORM_SESSION_TOKEN="$AWS_SESSION_TOKEN"
 
+          ENVS_APPLIED=""
           for ENV in $(jq -r '.environments | keys[]' "$META"); do
             ACCOUNT_ID=$(jq -r ".environments[\"${ENV}\"].account_id" "$META")
+
+            if [ -z "$ACCOUNT_ID" ] || ! echo "$ACCOUNT_ID" | grep -qE '^[0-9]{12}$'; then
+              echo "Skipping $ENV: no valid account_id yet"
+              continue
+            fi
 
             CREDS=$(AWS_ACCESS_KEY_ID="$PLATFORM_KEY_ID" \
                     AWS_SECRET_ACCESS_KEY="$PLATFORM_SECRET_KEY" \
@@ -223,21 +230,26 @@ jobs:
             export AWS_ACCESS_KEY_ID="$PLATFORM_KEY_ID"
             export AWS_SECRET_ACCESS_KEY="$PLATFORM_SECRET_KEY"
             export AWS_SESSION_TOKEN="$PLATFORM_SESSION_TOKEN"
+            ENVS_APPLIED="$ENVS_APPLIED $ENV"
           done
+          echo "envs_applied=${ENVS_APPLIED# }" >> "$GITHUB_OUTPUT"
 
       - name: Phase 3 — Update deploy_role_ready in metadata.json
         if: steps.detect.outputs.phase == '3'
         env:
           NAME: ${{ steps.detect.outputs.name }}
+          ENVS_APPLIED: ${{ steps.phase3.outputs.envs_applied }}
         run: |
           python - <<'PYEOF'
           import json, os
           name = os.environ["NAME"]
+          envs_applied = os.environ.get("ENVS_APPLIED", "").split()
           path = f"workloads/{name}/metadata.json"
           with open(path) as f:
               meta = json.load(f)
-          for env_cfg in meta["environments"].values():
-              env_cfg["deploy_role_ready"] = True
+          for env_name, env_cfg in meta["environments"].items():
+              if env_name in envs_applied:
+                  env_cfg["deploy_role_ready"] = True
           with open(path, "w") as f:
               json.dump(meta, f, indent=2)
               f.write("\n")

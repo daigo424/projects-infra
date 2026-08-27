@@ -51,6 +51,7 @@ for metadata_file in sorted(workloads_dir.glob("*/metadata.json")):
             "kind": "workload",
             "workload_name": workload_name,
             "environment": env_name,
+            "account_id": env_cfg.get("account_id", ""),
             "vpc_cidr": metadata.get("vpc_cidr", ""),
             "deploy_role_ready": env_cfg.get("deploy_role_ready", False),
         })
