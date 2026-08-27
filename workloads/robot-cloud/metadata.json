@@ -24,7 +24,7 @@
       "deploy_role_ready": false
     },
     "test": {
-      "account_id": "",
+      "account_id": "070165420635",
       "account_email": "ishii.daigo+robot-cloud-test@gmail.com",
       "enabled_for_access": true,
       "deploy_role_ready": false
