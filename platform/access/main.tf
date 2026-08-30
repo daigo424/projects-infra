@@ -32,12 +32,25 @@ locals {
 
   used_permissions = toset([for a in local.member_assignments : a.permission])
 
-  # サポートする permission set 名 → managed policy ARN
+  # サポートする permission set 名 → managed policy ARN のリスト
   # 追加したい場合はここに足す
   permission_policy_arns = {
-    "AdministratorAccess" = "arn:aws:iam::aws:policy/AdministratorAccess"
-    "ReadOnlyAccess"      = "arn:aws:iam::aws:policy/ReadOnlyAccess"
-    "PowerUserAccess"     = "arn:aws:iam::aws:policy/PowerUserAccess"
+    "AdministratorAccess" = ["arn:aws:iam::aws:policy/AdministratorAccess"]
+    "ReadOnlyAccess"      = ["arn:aws:iam::aws:policy/ReadOnlyAccess"]
+    "PowerUserAccess"     = ["arn:aws:iam::aws:policy/PowerUserAccess"]
+  }
+
+  # (permission_set_name, policy_arn) のペアに展開
+  permission_policy_pairs = {
+    for pair in flatten([
+      for perm_name in local.used_permissions : [
+        for policy_arn in local.permission_policy_arns[perm_name] : {
+          key        = "${perm_name}::${policy_arn}"
+          perm_name  = perm_name
+          policy_arn = policy_arn
+        }
+      ]
+    ]) : pair.key => pair
   }
 }
 
@@ -70,11 +83,26 @@ resource "aws_ssoadmin_permission_set" "by_name" {
   session_duration = "PT4H"
 }
 
+moved {
+  from = aws_ssoadmin_managed_policy_attachment.by_name["AdministratorAccess"]
+  to   = aws_ssoadmin_managed_policy_attachment.by_name["AdministratorAccess::arn:aws:iam::aws:policy/AdministratorAccess"]
+}
+
+moved {
+  from = aws_ssoadmin_managed_policy_attachment.by_name["ReadOnlyAccess"]
+  to   = aws_ssoadmin_managed_policy_attachment.by_name["ReadOnlyAccess::arn:aws:iam::aws:policy/ReadOnlyAccess"]
+}
+
+moved {
+  from = aws_ssoadmin_managed_policy_attachment.by_name["PowerUserAccess"]
+  to   = aws_ssoadmin_managed_policy_attachment.by_name["PowerUserAccess::arn:aws:iam::aws:policy/PowerUserAccess"]
+}
+
 resource "aws_ssoadmin_managed_policy_attachment" "by_name" {
-  for_each           = local.used_permissions
+  for_each           = local.permission_policy_pairs
   instance_arn       = var.identity_center_instance_arn
-  permission_set_arn = aws_ssoadmin_permission_set.by_name[each.key].arn
-  managed_policy_arn = local.permission_policy_arns[each.key]
+  permission_set_arn = aws_ssoadmin_permission_set.by_name[each.value.perm_name].arn
+  managed_policy_arn = each.value.policy_arn
 
   depends_on = [aws_ssoadmin_permission_set.by_name]
 }
