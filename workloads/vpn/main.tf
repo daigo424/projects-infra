@@ -98,6 +98,8 @@ resource "aws_iam_instance_profile" "vpn_server" {
 }
 
 resource "aws_instance" "vpn_server" {
+  count = var.create_compute ? 1 : 0
+
   ami                         = data.aws_ami.vpn_machine_image.id
   instance_type               = "t4g.nano"
   user_data_replace_on_change = true
@@ -136,16 +138,18 @@ resource "aws_instance" "vpn_server" {
 }
 
 resource "aws_eip" "vpn_server_eip" {
+  count  = var.create_compute ? 1 : 0
   domain = "vpc"
   tags   = { Name = "${var.workload_name}-${var.environment}-eip" }
 }
 
 resource "aws_eip_association" "vpn_server_eip_assoc" {
-  instance_id   = aws_instance.vpn_server.id
-  allocation_id = aws_eip.vpn_server_eip.id
+  count         = var.create_compute ? 1 : 0
+  instance_id   = aws_instance.vpn_server[0].id
+  allocation_id = aws_eip.vpn_server_eip[0].id
 }
 
 output "vpn_public_ip" {
-  value       = aws_eip.vpn_server_eip.public_ip
+  value       = var.create_compute ? aws_eip.vpn_server_eip[0].public_ip : null
   description = "The public IP address of the VPN server."
 }
