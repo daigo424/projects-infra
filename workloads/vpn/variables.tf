@@ -13,3 +13,8 @@ variable "environment" {
 variable "vpc_cidr" {
   type = string
 }
+
+variable "create_compute" {
+  type    = bool
+  default = true
+}
